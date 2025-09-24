@@ -6,6 +6,11 @@ require_once 'src/Utils/InputValidator.php';
 require_once 'src/Utils/SecurityHelper.php';
 require_once 'src/Utils/SecurityHeaders.php';
 
+// セッションを開始
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // セキュリティヘッダーを設定
 SecurityHeaders::setHeadersByEnvironment();
 
@@ -20,9 +25,13 @@ $message = '';
 $messageType = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // デバッグログは削除（本番環境での動作確認完了）
+    
     // CSRFトークンの検証
     $csrfToken = $_POST['csrf_token'] ?? '';
-    if (!SecurityHelper::validateCsrfToken($csrfToken)) {
+    $csrfValidationEnabled = true; // ログ確認により正常動作が確認できたため有効化
+    
+    if ($csrfValidationEnabled && !SecurityHelper::validateCsrfToken($csrfToken)) {
         $message = $lang === 'ja' ? 'セキュリティエラーが発生しました。' : 'Security error occurred.';
         $messageType = 'danger';
     } else {
@@ -99,7 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                         
                         <form method="POST" action="">
-                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escapeAttribute(SecurityHelper::generateCsrfToken()); ?>">
+                            <?php 
+                            // CSRFトークンを確実に生成
+                            $csrfToken = SecurityHelper::generateCsrfToken();
+                            ?>
+                            <input type="hidden" name="csrf_token" value="<?php echo SecurityHelper::escapeAttribute($csrfToken); ?>">
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label for="name" class="form-label">

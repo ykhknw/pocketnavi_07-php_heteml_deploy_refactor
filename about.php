@@ -22,7 +22,7 @@ $pageTitle = $lang === 'ja' ? 'このサイトについて' : 'About This Site';
 </head>
 <body>
     <!-- Header -->
-    <?php include '../src/Views/includes/header.php'; ?>
+    <?php include 'src/Views/includes/header.php'; ?>
     
     <div class="container-fluid">
         <div class="row">
@@ -104,7 +104,7 @@ $pageTitle = $lang === 'ja' ? 'このサイトについて' : 'About This Site';
     </div>
     
     <!-- Footer -->
-    <?php include '../src/Views/includes/footer.php'; ?>
+    <?php include 'src/Views/includes/footer.php'; ?>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
