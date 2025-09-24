@@ -166,7 +166,7 @@ class ArchitectService {
         try {
             require_once __DIR__ . '/SearchLogService.php';
             $searchLogService = new SearchLogService();
-            $searches = $searchLogService->getPopularSearchesForSidebar(5);
+            $searches = $searchLogService->getPopularSearchesForSidebar(20);
             
             // SearchLogServiceから取得した完全なデータをそのまま返す
             return $searches;

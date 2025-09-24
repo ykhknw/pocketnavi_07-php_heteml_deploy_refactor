@@ -101,9 +101,19 @@ function loadPopularSearchesPage(page) {
  * 検索フィルタを適用
  */
 function applySearchFilter() {
+    console.log('applySearchFilter called');
     currentPage = 1;
-    currentSearchQuery = document.getElementById('searchQueryInput').value.trim();
-    currentSearchType = document.getElementById('searchTypeFilter').value;
+    const searchInput = document.getElementById('searchQueryInput');
+    if (searchInput) {
+        currentSearchQuery = searchInput.value.trim();
+        console.log('Search query:', currentSearchQuery);
+    } else {
+        currentSearchQuery = '';
+        console.log('Search input not found');
+    }
+    // searchTypeFilterは存在しないので、空文字を設定
+    currentSearchType = '';
+    console.log('Loading popular searches data...');
     loadPopularSearchesData();
 }
 
@@ -147,16 +157,30 @@ function initializeSearchFilters() {
     const searchInput = document.getElementById('searchQueryInput');
     
     if (!searchInput) {
+        console.log('Search input element not found');
         return;
     }
+    
+    console.log('Initializing search filters for element:', searchInput);
     
     // 検索入力のイベントリスナー
     let searchTimeout;
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
+            console.log('Auto search triggered');
             applySearchFilter();
         }, 500); // 500ms後に検索実行
+    });
+    
+    // Enterキーでの即座検索
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            console.log('Enter key pressed, searching immediately');
+            clearTimeout(searchTimeout); // タイムアウトをクリア
+            applySearchFilter(); // 即座に検索実行
+        }
     });
     
 }
@@ -171,6 +195,8 @@ function initializePopularSearchesModal() {
         // モーダルが開かれるときのイベント
         modal.addEventListener('show.bs.modal', function() {
             loadPopularSearchesModal();
+            // 検索フィルタを再初期化
+            initializeSearchFilters();
         });
         
         // モーダルが閉じられるときのイベント

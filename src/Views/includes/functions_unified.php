@@ -550,7 +550,7 @@ function getPopularSearches($lang = 'ja') {
     try {
         require_once __DIR__ . '/../../Services/SearchLogService.php';
         $searchLogService = new SearchLogService();
-        $searches = $searchLogService->getPopularSearchesForSidebar(5);
+        $searches = $searchLogService->getPopularSearchesForSidebar(20);
         
         // 既存の形式に合わせて変換
         $result = [];

@@ -11,7 +11,7 @@
         </button>
         
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
+            <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="/index.php?lang=<?php echo $lang; ?>">
                         <?php echo $lang === 'ja' ? 'ホーム' : 'Home'; ?>
@@ -27,9 +27,6 @@
                         <?php echo $lang === 'ja' ? 'お問い合わせ' : 'Contact Us'; ?>
                     </a>
                 </li>
-            </ul>
-            
-            <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link language-switch d-flex align-items-center" href="#" id="languageSwitch" role="button">
                         <i data-lucide="globe" class="me-1" style="width: 16px; height: 16px;"></i>

@@ -541,9 +541,9 @@ class SearchLogService {
     }
     
     /**
-     * サイドバー用の人気検索ワードを取得（上位5件）
+     * サイドバー用の人気検索ワードを取得（上位20件）
      */
-    public function getPopularSearchesForSidebar($limit = 5) {
+    public function getPopularSearchesForSidebar($limit = 20) {
         $sql = "
             SELECT 
                 query,

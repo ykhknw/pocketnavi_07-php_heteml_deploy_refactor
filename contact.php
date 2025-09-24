@@ -41,28 +41,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = $lang === 'ja' ? 'すべての項目を正しく入力してください。' : 'Please fill in all fields correctly.';
                 $messageType = 'danger';
             } else {
-        // メール送信処理（実際の実装では適切なメール送信ライブラリを使用）
-        // ここでは簡単な例として、ログファイルに記録
-        $logData = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'name' => $name,
-            'email' => $email,
-            'message' => $message_content,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-        ];
-        
-        $logFile = 'logs/contact_' . date('Y-m') . '.log';
-        if (!is_dir('logs')) {
-            mkdir('logs', 0755, true);
+                // メール送信処理（実際の実装では適切なメール送信ライブラリを使用）
+                // ここでは簡単な例として、ログファイルに記録
+                $logData = [
+                    'timestamp' => date('Y-m-d H:i:s'),
+                    'name' => $name,
+                    'email' => $email,
+                    'message' => $message_content,
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+                ];
+                
+                $logFile = 'logs/contact_' . date('Y-m') . '.log';
+                if (!is_dir('logs')) {
+                    mkdir('logs', 0755, true);
+                }
+                
+                file_put_contents($logFile, json_encode($logData) . "\n", FILE_APPEND | LOCK_EX);
+                
+                $message = $lang === 'ja' ? 'お問い合わせを受け付けました。ありがとうございます。' : 'Thank you for your inquiry. We have received your message.';
+                $messageType = 'success';
+                
+                // フォームをクリア
+                $name = $email = $message_content = '';
+            }
         }
-        
-        file_put_contents($logFile, json_encode($logData) . "\n", FILE_APPEND | LOCK_EX);
-        
-        $message = $lang === 'ja' ? 'お問い合わせを受け付けました。ありがとうございます。' : 'Thank you for your inquiry. We have received your message.';
-        $messageType = 'success';
-        
-        // フォームをクリア
-        $name = $email = $message_content = '';
     }
 }
 ?>
@@ -79,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <!-- Header -->
-    <?php include '../src/Views/includes/header.php'; ?>
+    <?php include 'src/Views/includes/header.php'; ?>
     
     <div class="container-fluid">
         <div class="row">
@@ -156,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     
     <!-- Footer -->
-    <?php include '../src/Views/includes/footer.php'; ?>
+    <?php include 'src/Views/includes/footer.php'; ?>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>

@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // 必要なファイルを読み込み
-//require_once __DIR__ . '/../../src/Utils/Database.php';
-require_once __DIR__ . 'src/Services/SearchLogService.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../src/Services/SearchLogService.php';
 
 try {
     // パラメータの取得

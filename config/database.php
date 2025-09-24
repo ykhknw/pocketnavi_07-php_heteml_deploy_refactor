@@ -2,7 +2,7 @@
 // HETEML用データベース設定
 class Database {
     private $host = 'localhost';
-    private $db_name = '_shinkenchiku_02';
+    private $db_name = '_shinkenchiku_db';
     private $username = 'root';
     private $password = '';
     private $conn;
