@@ -5,6 +5,7 @@ require_once 'src/Views/includes/functions.php';
 require_once 'src/Utils/InputValidator.php';
 require_once 'src/Utils/SecurityHelper.php';
 require_once 'src/Utils/SecurityHeaders.php';
+require_once 'src/Utils/SEOHelper.php';
 
 // セッションを開始
 if (session_status() === PHP_SESSION_NONE) {
@@ -19,6 +20,10 @@ $lang = InputValidator::validateLanguage($_GET['lang'] ?? 'ja');
 
 // ページタイトル
 $pageTitle = $lang === 'ja' ? 'お問い合わせ' : 'Contact Us';
+
+// SEOメタタグの生成
+$seoData = SEOHelper::generateMetaTags('contact', [], $lang);
+$structuredData = SEOHelper::generateStructuredData('contact', [], $lang);
 
 // フォーム送信処理
 $message = '';
@@ -82,7 +87,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> - PocketNavi</title>
+    
+    <!-- SEO Meta Tags -->
+    <?php echo SEOHelper::renderMetaTags($seoData); ?>
+    
+    <!-- Structured Data (JSON-LD) -->
+    <?php echo SEOHelper::renderStructuredData($structuredData); ?>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">

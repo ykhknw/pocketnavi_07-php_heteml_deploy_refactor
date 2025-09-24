@@ -242,7 +242,7 @@ class BuildingService {
             return null;
             
         } catch (Exception $e) {
-            ErrorHandler::logError("Get building by slug error", "getBySlug", $e);
+            error_log("Get building by slug error: " . $e->getMessage());
             return null;
         }
     }
@@ -253,28 +253,35 @@ class BuildingService {
      * 共通の検索実行ロジック
      */
     private function executeSearch($whereClauses, $params, $page, $lang, $limit) {
-        $offset = ($page - 1) * $limit;
-        
         // WHERE句の構築
         $whereSql = $this->buildWhereClause($whereClauses);
         
         // カウントクエリ
         $countSql = $this->buildCountQuery($whereSql);
         
-        // データ取得クエリ
-        $sql = $this->buildSearchQuery($whereSql, $limit, $offset);
-        
         try {
             // カウント実行
             $total = $this->executeCountQuery($countSql, $params);
+            
+            $totalPages = ceil($total / $limit);
+            
+            // ページ番号の検証と調整
+            if ($page > $totalPages && $totalPages > 0) {
+                $page = $totalPages; // 最終ページに調整
+            } elseif ($page < 1) {
+                $page = 1; // 1ページ目に調整
+            }
+            
+            $offset = ($page - 1) * $limit;
+            
+            // データ取得クエリ
+            $sql = $this->buildSearchQuery($whereSql, $limit, $offset);
             
             // データ取得実行
             $rows = $this->executeSearchQuery($sql, $params);
             
             // データ変換
             $buildings = $this->transformBuildingData($rows, $lang);
-            
-            $totalPages = ceil($total / $limit);
             
             return [
                 'buildings' => $buildings,
@@ -284,8 +291,13 @@ class BuildingService {
             ];
             
         } catch (Exception $e) {
-            ErrorHandler::logError("Search error", "executeSearch", $e);
-            return ErrorHandler::getEmptySearchResult($page);
+            error_log("Search error: " . $e->getMessage());
+            return [
+                'buildings' => [],
+                'total' => 0,
+                'totalPages' => 0,
+                'currentPage' => $page
+            ];
         }
     }
     
@@ -293,8 +305,6 @@ class BuildingService {
      * 建築家検索の専用実行メソッド
      */
     private function executeArchitectSearch($architectSlug, $page, $lang, $limit) {
-        $offset = ($page - 1) * $limit;
-        
         // カウントクエリ（特定の建築家でフィルタリング）
         $countSql = "
             SELECT COUNT(DISTINCT b.building_id) as total
@@ -305,65 +315,76 @@ class BuildingService {
             WHERE ia.slug = ?
         ";
         
-        // データ取得クエリ（特定の建築家でフィルタリングされた建築物を取得し、
-        // 各建築物の建築家情報は、その建築物に紐付くすべての建築家を取得）
-        $sql = "
-            SELECT b.building_id,
-                   b.uid,
-                   b.title,
-                   b.titleEn,
-                   b.slug,
-                   b.lat,
-                   b.lng,
-                   b.location,
-                   b.locationEn_from_datasheetChunkEn as locationEn,
-                   b.completionYears,
-                   b.buildingTypes,
-                   b.buildingTypesEn,
-                   b.prefectures,
-                   b.prefecturesEn,
-                   b.has_photo,
-                   b.thumbnailUrl,
-                   b.youtubeUrl,
-                   b.created_at,
-                   b.updated_at,
-                   0 as likes,
-                   GROUP_CONCAT(
-                       DISTINCT ia2.name_ja 
-                       ORDER BY ba2.architect_order, ac2.order_index 
-                       SEPARATOR ' / '
-                   ) AS architectJa,
-                   GROUP_CONCAT(
-                       DISTINCT ia2.name_en 
-                       ORDER BY ba2.architect_order, ac2.order_index 
-                       SEPARATOR ' / '
-                   ) AS architectEn,
-                   GROUP_CONCAT(
-                       DISTINCT ba2.architect_id 
-                       ORDER BY ba2.architect_order 
-                       SEPARATOR ','
-                   ) AS architectIds,
-                   GROUP_CONCAT(
-                       DISTINCT ia2.slug 
-                       ORDER BY ba2.architect_order, ac2.order_index 
-                       SEPARATOR ','
-                   ) AS architectSlugs
-            FROM {$this->buildings_table} b
-            LEFT JOIN {$this->building_architects_table} ba ON b.building_id = ba.building_id
-            LEFT JOIN {$this->architect_compositions_table} ac ON ba.architect_id = ac.architect_id
-            LEFT JOIN {$this->individual_architects_table} ia ON ac.individual_architect_id = ia.individual_architect_id
-            LEFT JOIN {$this->building_architects_table} ba2 ON b.building_id = ba2.building_id
-            LEFT JOIN {$this->architect_compositions_table} ac2 ON ba2.architect_id = ac2.architect_id
-            LEFT JOIN {$this->individual_architects_table} ia2 ON ac2.individual_architect_id = ia2.individual_architect_id
-            WHERE ia.slug = ?
-            GROUP BY b.building_id, b.uid, b.title, b.titleEn, b.slug, b.lat, b.lng, b.location, b.locationEn_from_datasheetChunkEn, b.completionYears, b.buildingTypes, b.buildingTypesEn, b.prefectures, b.prefecturesEn, b.has_photo, b.thumbnailUrl, b.youtubeUrl, b.created_at, b.updated_at
-            ORDER BY b.has_photo DESC, b.building_id DESC
-            LIMIT {$limit} OFFSET {$offset}
-        ";
-        
         try {
             // カウント実行
             $total = $this->executeCountQuery($countSql, [$architectSlug]);
+            
+            $totalPages = ceil($total / $limit);
+            
+            // ページ番号の検証と調整
+            if ($page > $totalPages && $totalPages > 0) {
+                $page = $totalPages; // 最終ページに調整
+            } elseif ($page < 1) {
+                $page = 1; // 1ページ目に調整
+            }
+            
+            $offset = ($page - 1) * $limit;
+            
+            // データ取得クエリ（特定の建築家でフィルタリングされた建築物を取得し、
+            // 各建築物の建築家情報は、その建築物に紐付くすべての建築家を取得）
+            $sql = "
+                SELECT b.building_id,
+                       b.uid,
+                       b.title,
+                       b.titleEn,
+                       b.slug,
+                       b.lat,
+                       b.lng,
+                       b.location,
+                       b.locationEn_from_datasheetChunkEn as locationEn,
+                       b.completionYears,
+                       b.buildingTypes,
+                       b.buildingTypesEn,
+                       b.prefectures,
+                       b.prefecturesEn,
+                       b.has_photo,
+                       b.thumbnailUrl,
+                       b.youtubeUrl,
+                       b.created_at,
+                       b.updated_at,
+                       0 as likes,
+                       GROUP_CONCAT(
+                           DISTINCT ia2.name_ja 
+                           ORDER BY ba2.architect_order, ac2.order_index 
+                           SEPARATOR ' / '
+                       ) AS architectJa,
+                       GROUP_CONCAT(
+                           DISTINCT ia2.name_en 
+                           ORDER BY ba2.architect_order, ac2.order_index 
+                           SEPARATOR ' / '
+                       ) AS architectEn,
+                       GROUP_CONCAT(
+                           DISTINCT ba2.architect_id 
+                           ORDER BY ba2.architect_order 
+                           SEPARATOR ','
+                       ) AS architectIds,
+                       GROUP_CONCAT(
+                           DISTINCT ia2.slug 
+                           ORDER BY ba2.architect_order, ac2.order_index 
+                           SEPARATOR ','
+                       ) AS architectSlugs
+                FROM {$this->buildings_table} b
+                LEFT JOIN {$this->building_architects_table} ba ON b.building_id = ba.building_id
+                LEFT JOIN {$this->architect_compositions_table} ac ON ba.architect_id = ac.architect_id
+                LEFT JOIN {$this->individual_architects_table} ia ON ac.individual_architect_id = ia.individual_architect_id
+                LEFT JOIN {$this->building_architects_table} ba2 ON b.building_id = ba2.building_id
+                LEFT JOIN {$this->architect_compositions_table} ac2 ON ba2.architect_id = ac2.architect_id
+                LEFT JOIN {$this->individual_architects_table} ia2 ON ac2.individual_architect_id = ia2.individual_architect_id
+                WHERE ia.slug = ?
+                GROUP BY b.building_id, b.uid, b.title, b.titleEn, b.slug, b.lat, b.lng, b.location, b.locationEn_from_datasheetChunkEn, b.completionYears, b.buildingTypes, b.buildingTypesEn, b.prefectures, b.prefecturesEn, b.has_photo, b.thumbnailUrl, b.youtubeUrl, b.created_at, b.updated_at
+                ORDER BY b.has_photo DESC, b.building_id DESC
+                LIMIT {$limit} OFFSET {$offset}
+            ";
             
             // データ取得実行
             $rows = $this->executeSearchQuery($sql, [$architectSlug]);
@@ -371,8 +392,6 @@ class BuildingService {
             // データ変換
             $buildings = $this->transformBuildingData($rows, $lang);
             
-            $totalPages = ceil($total / $limit);
-            
             return [
                 'buildings' => $buildings,
                 'total' => $total,
@@ -381,8 +400,13 @@ class BuildingService {
             ];
             
         } catch (Exception $e) {
-            ErrorHandler::logError("Architect search error", "executeArchitectSearch", $e);
-            return ErrorHandler::getEmptySearchResult($page);
+            error_log("Architect search error: " . $e->getMessage());
+            return [
+                'buildings' => [],
+                'total' => 0,
+                'totalPages' => 0,
+                'currentPage' => $page
+            ];
         }
     }
     
@@ -390,32 +414,39 @@ class BuildingService {
      * 位置情報検索の専用実行メソッド
      */
     private function executeLocationSearch($whereClauses, $params, $userLat, $userLng, $page, $lang, $limit) {
-        $offset = ($page - 1) * $limit;
-        
         // WHERE句の構築
         $whereSql = $this->buildWhereClause($whereClauses);
         
         // カウントクエリ
         $countSql = $this->buildCountQuery($whereSql);
         
-        // データ取得クエリ（距離順でソート）
-        $sql = $this->buildLocationSearchQuery($whereSql, $limit, $offset);
-        
-        // パラメータの順序を修正（SELECT句用 + WHERE句用）
-        $locationParams = [$userLat, $userLng, $userLat]; // SELECT句用
-        $allParams = array_merge($locationParams, $params); // WHERE句用
-        
         try {
             // カウント実行
             $total = $this->executeCountQuery($countSql, $params);
+            
+            $totalPages = ceil($total / $limit);
+            
+            // ページ番号の検証と調整
+            if ($page > $totalPages && $totalPages > 0) {
+                $page = $totalPages; // 最終ページに調整
+            } elseif ($page < 1) {
+                $page = 1; // 1ページ目に調整
+            }
+            
+            $offset = ($page - 1) * $limit;
+            
+            // データ取得クエリ（距離順でソート）
+            $sql = $this->buildLocationSearchQuery($whereSql, $limit, $offset);
+            
+            // パラメータの順序を修正（SELECT句用 + WHERE句用）
+            $locationParams = [$userLat, $userLng, $userLat]; // SELECT句用
+            $allParams = array_merge($locationParams, $params); // WHERE句用
             
             // データ取得実行
             $rows = $this->executeSearchQuery($sql, $allParams);
             
             // データ変換
             $buildings = $this->transformBuildingData($rows, $lang);
-            
-            $totalPages = ceil($total / $limit);
             
             return [
                 'buildings' => $buildings,
@@ -425,8 +456,13 @@ class BuildingService {
             ];
             
         } catch (Exception $e) {
-            ErrorHandler::logError("Location search error", "executeLocationSearch", $e);
-            return ErrorHandler::getEmptySearchResult($page);
+            error_log("Location search error: " . $e->getMessage());
+            return [
+                'buildings' => [],
+                'total' => 0,
+                'totalPages' => 0,
+                'currentPage' => $page
+            ];
         }
     }
     
@@ -869,7 +905,7 @@ class BuildingService {
             
             return $stmt->fetchAll();
         } catch (Exception $e) {
-            ErrorHandler::logError("executeSearchQuery error", "executeSearchQuery", $e);
+            error_log("executeSearchQuery error: " . $e->getMessage());
             throw $e;
         }
     }

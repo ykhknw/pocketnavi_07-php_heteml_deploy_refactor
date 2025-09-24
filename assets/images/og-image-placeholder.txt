@@ -1,0 +1,40 @@
+# OG画像プレースホルダー
+
+このファイルは、デフォルトのOG画像（og-image.jpg）のプレースホルダーです。
+
+## 推奨仕様
+- サイズ: 1200x630px
+- 形式: JPG
+- 内容: PocketNaviのロゴと建築物のイメージ
+- ファイル名: og-image.jpg
+
+## 実装方法
+1. デザインツールで1200x630pxの画像を作成
+2. PocketNaviのロゴと建築物のイメージを配置
+3. og-image.jpgとして保存
+4. このプレースホルダーファイルを削除
+
+## 注意事項
+- 画像は軽量化（100KB以下推奨）
+- テキストは読みやすく配置
+- ブランドカラーを活用
+
+## 必要な画像ファイル一覧
+1. og-image.jpg (1200x630px) - メインOG画像（ホーム、About、Contact、建築家ページ用）
+2. default-building.jpg (800x600px) - デフォルト建築物画像（has_photoがNULLの場合用）
+
+## 画像使用ルール
+### 建築物ページ
+- has_photoが.webpで終わる場合: `/screen_shots_3_webp/{has_photo}` を使用（撮影者所有）
+- has_photoがNULLまたは.webpで終わらない場合: `default-building.jpg` を使用
+
+### 建築家ページ
+- 常に `og-image.jpg` を使用
+
+### その他ページ（ホーム、About、Contact）
+- 常に `og-image.jpg` を使用
+
+## 著作権について
+- すべての画像は著作権フリーまたは適切なライセンスのものを使用
+- `/screen_shots_3_webp/` ディレクトリ内の.webpファイルは撮影者所有のため使用可能
+- 建築物の実際の写真（thumbnailUrl）は著作権の問題で使用しない

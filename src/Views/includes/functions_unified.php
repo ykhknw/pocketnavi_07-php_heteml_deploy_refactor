@@ -420,6 +420,9 @@ function transformBuildingData($row, $lang = 'ja') {
         'thumbnailUrl' => generateThumbnailUrl($row['uid'] ?? '', $row['has_photo'] ?? ''),
         'youtubeUrl' => $row['youtubeUrl'] ?? '',
         'architects' => $architects,
+        // SEO用に元の文字列データも保持
+        'architectJa' => $row['architectJa'] ?? '',
+        'architectEn' => $row['architectEn'] ?? '',
         'likes' => intval($row['likes'] ?? 0),
         'distance' => isset($row['distance']) ? round(floatval($row['distance']), 2) : null,
         'created_at' => $row['created_at'] ?? '',

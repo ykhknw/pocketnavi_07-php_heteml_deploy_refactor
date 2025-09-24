@@ -7,6 +7,7 @@ require_once 'src/Views/includes/functions.php';
 require_once 'src/Utils/InputValidator.php';
 require_once 'src/Utils/SecurityHelper.php';
 require_once 'src/Utils/SecurityHeaders.php';
+require_once 'src/Utils/SEOHelper.php';
 
 // セキュリティヘッダーを設定
 SecurityHeaders::setHeadersByEnvironment();
@@ -88,6 +89,7 @@ if ($buildingSlug) {
     // デバッグ情報（開発時のみ）
     if (isset($_GET['debug']) && $_GET['debug'] === '1') {
         error_log("Debug - architectsSlug: " . $architectsSlug);
+        error_log("Debug - searchResult: " . print_r($searchResult, true));
         error_log("Debug - architectInfo: " . print_r($architectInfo, true));
     }
     
@@ -215,6 +217,33 @@ if ($buildingSlug) {
 // 人気検索の取得
 $popularSearches = getPopularSearches($lang);
 
+// SEOメタタグの生成
+$seoData = [];
+$structuredData = [];
+$pageType = 'home';
+
+if ($buildingSlug && $currentBuilding) {
+    // 建築物ページ
+    $pageType = 'building';
+    $seoData = SEOHelper::generateMetaTags('building', $currentBuilding, $lang);
+    $structuredData = SEOHelper::generateStructuredData('building', $currentBuilding, $lang);
+} elseif ($architectsSlug) {
+    // 建築家ページ
+    $pageType = 'architect';
+    // $architectInfoは既に87行目で設定されているので、リセットしない
+    if (isset($architectInfo) && $architectInfo) {
+        $architectInfo['building_count'] = count($buildings);
+        $seoData = SEOHelper::generateMetaTags('architect', $architectInfo, $lang);
+        $structuredData = SEOHelper::generateStructuredData('architect', $architectInfo, $lang);
+    }
+}
+
+// デフォルト値の設定（SEOデータが空の場合）
+if (empty($seoData)) {
+    $seoData = SEOHelper::generateMetaTags('home', [], $lang);
+    $structuredData = SEOHelper::generateStructuredData('home', [], $lang);
+}
+
 // デバッグ情報の取得（開発時のみ）
 $debugInfo = null;
 if (isset($_GET['debug']) && $_GET['debug'] === '1') {
@@ -240,7 +269,12 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $lang === 'ja' ? 'PocketNavi - 建築物ナビゲーション' : 'PocketNavi - Building Navigation'; ?></title>
+    
+    <!-- SEO Meta Tags -->
+    <?php echo SEOHelper::renderMetaTags($seoData); ?>
+    
+    <!-- Structured Data (JSON-LD) -->
+    <?php echo SEOHelper::renderStructuredData($structuredData); ?>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -253,6 +287,17 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
     
     <!-- Favicon -->
     <link rel="icon" href="/assets/images/landmark.svg" type="image/svg+xml">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-9FY04VHM17"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-9FY04VHM17');
+</script>
+
 </head>
 <body>
     <!-- Header -->
@@ -435,15 +480,58 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
                                     // 建築家名を取得
                                     $architectName = '';
                                     if (isset($architectInfo) && $architectInfo) {
-                                        $architectName = $lang === 'ja' ? 
-                                            ($architectInfo['nameJa'] ?? $architectInfo['nameEn'] ?? '') : 
-                                            ($architectInfo['nameEn'] ?? $architectInfo['nameJa'] ?? '');
+                                        if ($lang === 'ja') {
+                                            // 日本語ページの場合：日本語名を優先、なければ英語名
+                                            $architectName = !empty($architectInfo['name_ja']) ? 
+                                                $architectInfo['name_ja'] : 
+                                                ($architectInfo['name_en'] ?? '');
+                                        } else {
+                                            // 英語ページの場合：英語名を優先、なければ日本語名
+                                            $architectName = !empty($architectInfo['name_en']) ? 
+                                                $architectInfo['name_en'] : 
+                                                ($architectInfo['name_ja'] ?? '');
+                                        }
+                                    }
+                                    
+                                    // 建築家名が取得できない場合は、スラッグから推測
+                                    if (empty($architectName)) {
+                                        // スラッグを人間が読みやすい形式に変換
+                                        $architectName = str_replace('-', ' ', $architectsSlug);
+                                        $architectName = ucwords($architectName);
+                                        
+                                        // 日本語ページの場合は、一般的な建築家名のパターンを適用
+                                        if ($lang === 'ja') {
+                                            // 英語の建築家名を日本語に変換する一般的なパターン
+                                            $nameMappings = [
+                                                'tadao ando architect associates' => '安藤忠雄建築研究所',
+                                                'tadao ando' => '安藤忠雄',
+                                                'takenaka corporation' => '竹中工務店',
+                                                'nikken sekkei' => '日建設計',
+                                                'kengo kuma' => '隈研吾',
+                                                'kenzo tange' => '丹下健三',
+                                                'fumihiko maki' => '槇文彦',
+                                                'toyo ito' => '伊東豊雄',
+                                                'kazuyo sejima' => '妹島和世',
+                                                'ryue nishizawa' => '西沢立衛',
+                                                'sanaa' => 'SANAA',
+                                                'ggn' => 'GGN'
+                                            ];
+                                            
+                                            $lowerSlug = strtolower($architectsSlug);
+                                            if (isset($nameMappings[$lowerSlug])) {
+                                                $architectName = $nameMappings[$lowerSlug];
+                                            }
+                                        }
                                     }
                                     
                                     // デバッグ情報（開発時のみ）
                                     if (isset($_GET['debug']) && $_GET['debug'] === '1') {
                                         echo "<!-- Debug: architectInfo = " . print_r($architectInfo, true) . " -->";
                                         echo "<!-- Debug: architectName = '" . $architectName . "' -->";
+                                        echo "<!-- Debug: lang = '" . $lang . "' -->";
+                                        echo "<!-- Debug: name_ja = '" . ($architectInfo['name_ja'] ?? 'not_set') . "' -->";
+                                        echo "<!-- Debug: name_en = '" . ($architectInfo['name_en'] ?? 'not_set') . "' -->";
+                                        echo "<!-- Debug: architectsSlug = '" . $architectsSlug . "' -->";
                                     }
                                     
                                     echo htmlspecialchars($architectName); 

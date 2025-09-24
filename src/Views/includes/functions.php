@@ -171,6 +171,9 @@ function transformBuildingData($row, $lang = 'ja') {
         'thumbnailUrl' => generateThumbnailUrl($row['uid'] ?? '', $row['has_photo'] ?? ''),
         'youtubeUrl' => $row['youtubeUrl'] ?? '',
         'architects' => $architects,
+        // SEO用に元の文字列データも保持
+        'architectJa' => $row['architectJa'] ?? '',
+        'architectEn' => $row['architectEn'] ?? '',
         'likes' => intval($row['likes'] ?? 0),
         'distance' => isset($row['distance']) ? round(floatval($row['distance']), 2) : null,
         'created_at' => $row['created_at'] ?? '',
@@ -275,8 +278,17 @@ function searchBuildingsByArchitectSlug($architectSlug, $page = 1, $lang = 'ja',
         }
         
         // 建築家情報を取得して追加
-        $architectService = new ArchitectService();
-        $architectInfo = $architectService->getBySlug($architectSlug, $lang);
+        try {
+            require_once __DIR__ . '/../../Services/ArchitectService.php';
+            $architectService = new ArchitectService();
+            $architectInfo = $architectService->getBySlug($architectSlug, $lang);
+            if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+                error_log("searchBuildingsByArchitectSlug - architectInfo: " . print_r($architectInfo, true));
+            }
+        } catch (Exception $e) {
+            error_log("searchBuildingsByArchitectSlug - ArchitectService error: " . $e->getMessage());
+            $architectInfo = null;
+        }
         
         // 建築家ページ閲覧ログを記録
         if ($architectInfo) {
@@ -293,6 +305,10 @@ function searchBuildingsByArchitectSlug($architectSlug, $page = 1, $lang = 'ja',
         }
         
         $result['architectInfo'] = $architectInfo;
+        
+        if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+            error_log("searchBuildingsByArchitectSlug - Final result: " . print_r($result, true));
+        }
         
         return $result;
     } catch (Exception $e) {

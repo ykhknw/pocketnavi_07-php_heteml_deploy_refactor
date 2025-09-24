@@ -182,6 +182,14 @@ class ArchitectService {
      */
     private function transformArchitectData($row, $lang) {
         try {
+            // デバッグ情報（開発時のみ）
+            if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+                error_log("TransformArchitectData - Raw row data: " . print_r($row, true));
+                error_log("TransformArchitectData - name_ja: '" . ($row['name_ja'] ?? 'NULL') . "'");
+                error_log("TransformArchitectData - name_en: '" . ($row['name_en'] ?? 'NULL') . "'");
+                error_log("TransformArchitectData - lang: '" . $lang . "'");
+            }
+            
             $architect = [
                 'id' => $row['individual_architect_id'],
                 'name' => $lang === 'ja' ? $row['name_ja'] : $row['name_en'],
@@ -192,9 +200,14 @@ class ArchitectService {
                 'website_title' => $row['website_title'] ?? '',
                 'individual_architect_id' => $row['individual_architect_id'],
                 'name_ja' => $row['name_ja'],
+                'name_en' => $row['name_en'],
                 'createdAt' => $row['created_at'],
                 'updatedAt' => $row['updated_at']
             ];
+            
+            if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+                error_log("TransformArchitectData - Final architect data: " . print_r($architect, true));
+            }
             
             return $architect;
         } catch (Exception $e) {

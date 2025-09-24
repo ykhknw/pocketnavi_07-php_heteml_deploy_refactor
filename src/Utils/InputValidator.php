@@ -222,7 +222,7 @@ class InputValidator {
     /**
      * ページ番号の検証
      */
-    public static function validatePage($input, $maxPage = 1000) {
+    public static function validatePage($input, $maxPage = 10000) {
         $page = self::validateInteger($input, 1, $maxPage);
         return $page ?? 1;
     }
