@@ -5,6 +5,7 @@
 let currentPage = 1;
 let currentSearchQuery = '';
 let currentSearchType = '';
+let currentTab = 'all'; // 現在のタブ
 
 /**
  * モーダルを開いて人気検索ワードを読み込む
@@ -14,8 +15,67 @@ function loadPopularSearchesModal() {
     currentSearchQuery = '';
     currentSearchType = '';
     
+    // サイドバーで選択中のタブを検出
+    let activeSidebarTab = document.querySelector('#sidebarPopularSearchesTabContent .nav-link.active');
+    if (!activeSidebarTab) {
+        activeSidebarTab = document.querySelector('.nav-link.active');
+    }
+    if (!activeSidebarTab) {
+        activeSidebarTab = document.querySelector('[id*="sidebar"][id*="tab"].active');
+    }
+    
+    if (activeSidebarTab) {
+        const tabId = activeSidebarTab.id;
+        if (tabId === 'sidebar-all-tab') {
+            currentTab = 'all';
+        } else if (tabId === 'sidebar-architect-tab') {
+            currentTab = 'architect';
+        } else if (tabId === 'sidebar-building-tab') {
+            currentTab = 'building';
+        } else if (tabId === 'sidebar-prefecture-tab') {
+            currentTab = 'prefecture';
+        } else if (tabId === 'sidebar-text-tab') {
+            currentTab = 'text';
+        } else {
+            currentTab = 'all';
+        }
+    } else {
+        currentTab = 'all';
+    }
+    
     // フィルタをリセット
-    document.getElementById('searchQueryInput').value = '';
+    const searchInput = document.getElementById('searchQueryInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // 適切なタブをアクティブにする
+    const allTabs = ['all-tab', 'architect-tab', 'building-tab', 'prefecture-tab', 'text-tab'];
+    allTabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            if (tabId === `${currentTab}-tab`) {
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+            } else {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            }
+        }
+    });
+    
+    // 適切なタブコンテンツを表示する
+    const allTabPanes = ['all-content', 'architect-content', 'building-content', 'prefecture-content', 'text-content'];
+    allTabPanes.forEach(paneId => {
+        const pane = document.getElementById(paneId);
+        if (pane) {
+            if (paneId === `${currentTab}-content`) {
+                pane.classList.add('show', 'active');
+            } else {
+                pane.classList.remove('show', 'active');
+            }
+        }
+    });
     
     // データを読み込み
     loadPopularSearchesData();
@@ -25,8 +85,16 @@ function loadPopularSearchesModal() {
  * 人気検索ワードデータを読み込む
  */
 function loadPopularSearchesData() {
-    const loadingElement = document.getElementById('popularSearchesLoading');
-    const contentElement = document.getElementById('popularSearchesContent');
+    // 現在のタブに応じて正しい要素を取得
+    const loadingElement = document.getElementById(currentTab + '-loading');
+    const contentElement = document.getElementById(currentTab + '-content-area');
+    
+    if (!loadingElement || !contentElement) {
+        console.error('Loading or content element not found for tab:', currentTab);
+        console.error('Loading element:', loadingElement);
+        console.error('Content element:', contentElement);
+        return;
+    }
     
     // ローディング表示
     loadingElement.style.display = 'block';
@@ -41,6 +109,11 @@ function loadPopularSearchesData() {
     
     if (currentSearchQuery) {
         params.append('q', currentSearchQuery);
+    }
+    
+    // 現在のタブに応じて検索タイプを設定
+    if (currentTab !== 'all') {
+        params.append('search_type', currentTab);
     }
     
     
@@ -157,11 +230,9 @@ function initializeSearchFilters() {
     const searchInput = document.getElementById('searchQueryInput');
     
     if (!searchInput) {
-        console.log('Search input element not found');
         return;
     }
     
-    console.log('Initializing search filters for element:', searchInput);
     
     // 検索入力のイベントリスナー
     let searchTimeout;
@@ -186,6 +257,34 @@ function initializeSearchFilters() {
 }
 
 /**
+ * タブ切り替え機能
+ */
+function switchTab(tabName) {
+    currentTab = tabName;
+    currentPage = 1; // ページをリセット
+    
+    // すべてのタブを非アクティブにする
+    const allTabs = ['all-tab', 'architect-tab', 'building-tab', 'prefecture-tab', 'text-tab'];
+    allTabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-selected', 'false');
+        }
+    });
+    
+    // 選択されたタブをアクティブにする
+    const activeTab = document.getElementById(tabName + '-tab');
+    if (activeTab) {
+        activeTab.classList.add('active');
+        activeTab.setAttribute('aria-selected', 'true');
+    }
+    
+    // データを読み込み
+    loadPopularSearchesData();
+}
+
+/**
  * モーダルイベントの初期化
  */
 function initializePopularSearchesModal() {
@@ -204,15 +303,370 @@ function initializePopularSearchesModal() {
             // 必要に応じてクリーンアップ処理
         });
     }
+    
+    // タブクリックイベントを設定
+    const tabButtons = ['all-tab', 'architect-tab', 'building-tab', 'prefecture-tab', 'text-tab'];
+    tabButtons.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabName = tabId.replace('-tab', '');
+                switchTab(tabName);
+            });
+        }
+    });
+}
+
+/**
+ * サイドバーの人気検索データを読み込む
+ */
+function loadSidebarPopularSearches() {
+    const container = document.getElementById('sidebar-popular-searches-container');
+    const loading = document.getElementById('sidebar-loading');
+    
+    if (!container || !loading) {
+        console.error('Sidebar container or loading element not found');
+        return;
+    }
+    
+    // ローディング表示
+    loading.style.display = 'block';
+    
+    // APIを呼び出し
+    const params = new URLSearchParams({
+        page: 1,
+        limit: 20,
+        lang: getCurrentLanguage()
+    });
+    
+    
+    fetch(`/api/popular-searches.php?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            
+            if (data.success) {
+                // サイドバー用のHTMLを生成
+                const html = generateSidebarHTML(data.data.html, data.data.searches);
+                container.innerHTML = html;
+                
+                // ツールチップを初期化
+                initializeSidebarTooltips();
+                
+                // Lucideアイコンを再初期化
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+                
+                // 初期表示として「すべて」タブを表示
+                filterSidebarSearches('all');
+            } else {
+                container.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i data-lucide="alert-circle" class="me-2" style="width: 16px; height: 16px;"></i>
+                        ${data.error.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sidebar popular searches:', error);
+            loading.style.display = 'none';
+            container.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i data-lucide="alert-circle" class="me-2" style="width: 16px; height: 16px;"></i>
+                    ${getCurrentLanguage() === 'ja' ? 'データの読み込みに失敗しました。' : 'Failed to load data.'}
+                </div>
+            `;
+        });
+}
+
+/**
+ * サイドバー用のHTMLを生成
+ */
+function generateSidebarHTML(modalHTML, searchesData) {
+    const lang = getCurrentLanguage();
+    
+    // Create a temporary container to parse the HTML
+    const tempContainer = document.createElement('div');
+    tempContainer.innerHTML = modalHTML;
+    
+    // Process each search item and add data-search-type attribute
+    if (searchesData && searchesData.length > 0) {
+        searchesData.forEach((search, index) => {
+            const searchType = search.search_type || 'text';
+            const query = search.query;
+            
+            // Find the corresponding link element in the parsed HTML
+            const links = tempContainer.querySelectorAll('a');
+            links.forEach(link => {
+                const span = link.querySelector('span');
+                if (span && span.textContent.trim() === query.trim()) {
+                    link.setAttribute('data-search-type', searchType);
+                    link.setAttribute('data-debug-info', JSON.stringify({
+                        search_type: searchType,
+                        page_type: search.page_type || 'null'
+                    }));
+                }
+            });
+        });
+    }
+    
+    // Get the processed HTML
+    const processedHTML = tempContainer.innerHTML;
+    
+    return `
+        <!-- タブナビゲーション -->
+        <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" 
+                        id="sidebar-all-tab" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#sidebar-all-content" 
+                        type="button" 
+                        role="tab" 
+                        aria-controls="sidebar-all-content" 
+                        aria-selected="true" 
+                        onclick="filterSidebarSearches('all')"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="${lang === 'ja' ? 'すべて' : 'All'}">
+                    <i data-lucide="list" style="width: 16px; height: 16px;"></i>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" 
+                        id="sidebar-architect-tab" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#sidebar-architect-content" 
+                        type="button" 
+                        role="tab" 
+                        aria-controls="sidebar-architect-content" 
+                        aria-selected="false" 
+                        onclick="filterSidebarSearches('architect')"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="${lang === 'ja' ? '建築家' : 'Architect'}">
+                    <i data-lucide="circle-user-round" style="width: 16px; height: 16px;"></i>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" 
+                        id="sidebar-building-tab" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#sidebar-building-content" 
+                        type="button" 
+                        role="tab" 
+                        aria-controls="sidebar-building-content" 
+                        aria-selected="false" 
+                        onclick="filterSidebarSearches('building')"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="${lang === 'ja' ? '建築物' : 'Building'}">
+                    <i data-lucide="building" style="width: 16px; height: 16px;"></i>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" 
+                        id="sidebar-prefecture-tab" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#sidebar-prefecture-content" 
+                        type="button" 
+                        role="tab" 
+                        aria-controls="sidebar-prefecture-content" 
+                        aria-selected="false" 
+                        onclick="filterSidebarSearches('prefecture')"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="${lang === 'ja' ? '都道府県' : 'Prefecture'}">
+                    <i data-lucide="map-pin" style="width: 16px; height: 16px;"></i>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" 
+                        id="sidebar-text-tab" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#sidebar-text-content" 
+                        type="button" 
+                        role="tab" 
+                        aria-controls="sidebar-text-content" 
+                        aria-selected="false" 
+                        onclick="filterSidebarSearches('text')"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="${lang === 'ja' ? 'テキスト' : 'Text'}">
+                    <i data-lucide="type" style="width: 16px; height: 16px;"></i>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- タブコンテンツ -->
+        <div class="tab-content" id="sidebarPopularSearchesTabContent">
+            <!-- すべて -->
+            <div class="tab-pane fade show active" id="sidebar-all-content" role="tabpanel" aria-labelledby="sidebar-all-tab">
+                <div class="list-group list-group-flush" id="sidebar-all-list">
+                    ${processedHTML}
+                </div>
+            </div>
+            
+            <!-- 建築家 -->
+            <div class="tab-pane fade" id="sidebar-architect-content" role="tabpanel" aria-labelledby="sidebar-architect-tab">
+                <div class="list-group list-group-flush" id="sidebar-architect-list">
+                    <!-- 建築家の検索結果はJavaScriptで動的に表示 -->
+                </div>
+            </div>
+            
+            <!-- 建築物 -->
+            <div class="tab-pane fade" id="sidebar-building-content" role="tabpanel" aria-labelledby="sidebar-building-tab">
+                <div class="list-group list-group-flush" id="sidebar-building-list">
+                    <!-- 建築物の検索結果はJavaScriptで動的に表示 -->
+                </div>
+            </div>
+            
+            <!-- 都道府県 -->
+            <div class="tab-pane fade" id="sidebar-prefecture-content" role="tabpanel" aria-labelledby="sidebar-prefecture-tab">
+                <div class="list-group list-group-flush" id="sidebar-prefecture-list">
+                    <!-- 都道府県の検索結果はJavaScriptで動的に表示 -->
+                </div>
+            </div>
+            
+            <!-- テキスト -->
+            <div class="tab-pane fade" id="sidebar-text-content" role="tabpanel" aria-labelledby="sidebar-text-tab">
+                <div class="list-group list-group-flush" id="sidebar-text-list">
+                    <!-- テキストの検索結果はJavaScriptで動的に表示 -->
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // DOM読み込み完了後に初期化
 document.addEventListener('DOMContentLoaded', function() {
     initializePopularSearchesModal();
     initializeSearchFilters();
+    initializeSidebarTooltips();
+    loadSidebarPopularSearches();
 });
+
+/**
+ * サイドバーの検索結果をフィルタリング
+ */
+function filterSidebarSearches(searchType) {
+    // 各タブのリストを取得
+    const architectList = document.getElementById('sidebar-architect-list');
+    const buildingList = document.getElementById('sidebar-building-list');
+    const prefectureList = document.getElementById('sidebar-prefecture-list');
+    const textList = document.getElementById('sidebar-text-list');
+    const allList = document.getElementById('sidebar-all-list');
+    
+    // 各リストをクリア
+    if (architectList) architectList.innerHTML = '';
+    if (buildingList) buildingList.innerHTML = '';
+    if (prefectureList) prefectureList.innerHTML = '';
+    if (textList) textList.innerHTML = '';
+    
+    // すべてタブの場合は既存のデータを使用
+    if (searchType === 'all') {
+        return;
+    }
+    
+    // 特定のタブの場合はAPIからデータを取得
+    const params = new URLSearchParams({
+        page: 1,
+        limit: 20,
+        lang: getCurrentLanguage(),
+        search_type: searchType
+    });
+    
+    fetch(`/api/popular-searches.php?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.html) {
+                let targetList;
+                switch (searchType) {
+                    case 'architect':
+                        targetList = architectList;
+                        break;
+                    case 'building':
+                        targetList = buildingList;
+                        break;
+                    case 'prefecture':
+                        targetList = prefectureList;
+                        break;
+                    case 'text':
+                        targetList = textList;
+                        break;
+                }
+                
+                if (targetList) {
+                    targetList.innerHTML = data.data.html;
+                }
+            }
+        })
+        .catch(error => {
+            console.error(`Error loading ${searchType} sidebar data:`, error);
+        });
+    
+    // タブのアクティブ状態を更新
+    const tabButtons = document.querySelectorAll('#sidebarPopularSearchesTabContent .nav-link');
+    tabButtons.forEach(button => {
+        button.classList.remove('active');
+        button.setAttribute('aria-selected', 'false');
+    });
+    
+    const contentPanes = document.querySelectorAll('#sidebarPopularSearchesTabContent .tab-pane');
+    contentPanes.forEach(pane => {
+        pane.classList.remove('show', 'active');
+    });
+    
+    // 選択されたタブをアクティブにする
+    const activeTab = document.getElementById('sidebar-' + searchType + '-tab');
+    const activeContent = document.getElementById('sidebar-' + searchType + '-content');
+    
+    if (activeTab) {
+        activeTab.classList.add('active');
+        activeTab.setAttribute('aria-selected', 'true');
+    }
+    
+    if (activeContent) {
+        activeContent.classList.add('show', 'active');
+    }
+    
+    // Lucideアイコンを再初期化
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+    
+    // ツールチップを再初期化
+    initializeSidebarTooltips();
+}
+
+/**
+ * サイドバーのツールチップを初期化
+ */
+function initializeSidebarTooltips() {
+    // 既存のツールチップを破棄
+    const existingTooltips = document.querySelectorAll('#sidebarPopularSearchesTabContent .nav-link[data-bs-toggle="tooltip"]');
+    existingTooltips.forEach(element => {
+        const tooltip = bootstrap.Tooltip.getInstance(element);
+        if (tooltip) {
+            tooltip.dispose();
+        }
+    });
+    
+    // 新しいツールチップを初期化
+    const tooltipTriggerList = document.querySelectorAll('#sidebarPopularSearchesTabContent .nav-link[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
 
 // グローバル関数として公開
 window.loadPopularSearchesModal = loadPopularSearchesModal;
 window.loadPopularSearchesPage = loadPopularSearchesPage;
 window.applySearchFilter = applySearchFilter;
+window.switchTab = switchTab;
+window.filterSidebarSearches = filterSidebarSearches;
+window.initializeSidebarTooltips = initializeSidebarTooltips;
+window.loadSidebarPopularSearches = loadSidebarPopularSearches;

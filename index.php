@@ -726,17 +726,12 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
             currentPage: <?php echo $currentPage; ?>,
             limit: <?php echo $limit; ?>
         };
-        console.log('Page info set:', window.pageInfo); // デバッグ用
         
         // 建築物データをJavaScriptに渡す
         window.buildingsData = <?php echo json_encode($buildings); ?>;
-        console.log('Buildings data set:', window.buildingsData); // デバッグ用
         
         // Lucideアイコンの初期化とマップの初期化
         document.addEventListener("DOMContentLoaded", () => {
-            console.log('DOMContentLoaded event fired');
-            console.log('Leaflet available:', typeof L !== 'undefined');
-            console.log('initMap function available:', typeof initMap !== 'undefined');
             
             lucide.createIcons();
             
@@ -757,7 +752,6 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
                     }
                 }
                 
-                console.log('Initializing map with center:', center);
                 initMap(center, window.buildingsData || []);
             } else {
                 console.error('initMap function not found');

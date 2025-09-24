@@ -19,7 +19,7 @@ try {
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
     $searchQuery = isset($_GET['q']) ? trim($_GET['q']) : '';
-    $searchType = ''; // 常にすべてのタイプを表示
+    $searchType = isset($_GET['search_type']) ? trim($_GET['search_type']) : ''; // タブ別フィルタ
     $lang = isset($_GET['lang']) ? $_GET['lang'] : 'ja';
     
     // パラメータの検証
@@ -29,6 +29,9 @@ try {
     // 検索ログサービスを使用してデータを取得
     $searchLogService = new SearchLogService();
     $result = $searchLogService->getPopularSearchesForModal($page, $limit, $searchQuery, $searchType);
+    
+    // デバッグ情報をログに記録
+    error_log("Popular searches API - searchType: '$searchType', searchQuery: '$searchQuery', result count: " . count($result['searches']));
     
     // レスポンスの準備
     $response = [
@@ -101,18 +104,24 @@ try {
             );
             $html .= '<div class="d-flex flex-column">';
             $html .= sprintf('<span class="fw-medium">%s</span>', htmlspecialchars($search['query']));
-            if ($pageTypeLabel) {
-                $html .= sprintf('<small class="text-muted">%s</small>', $pageTypeLabel);
-            } else {
-                $html .= sprintf('<small class="text-muted">%s</small>', $searchTypeLabel);
+            // 「すべて」タブの場合のみカテゴリラベルを表示
+            if (empty($searchType)) {
+                if ($pageTypeLabel) {
+                    $html .= sprintf('<small class="text-muted">%s</small>', $pageTypeLabel);
+                } else {
+                    $html .= sprintf('<small class="text-muted">%s</small>', $searchTypeLabel);
+                }
             }
             $html .= '</div>';
             $html .= '<div class="d-flex flex-column align-items-end">';
             $html .= sprintf('<span class="badge bg-primary rounded-pill">%d</span>', $search['total_searches']);
-            $html .= sprintf('<small class="text-muted">%d %s</small>', 
-                $search['unique_users'], 
-                $lang === 'ja' ? 'ユーザー' : 'users'
-            );
+            // 「すべて」タブの場合のみユーザー数を表示
+            if (empty($searchType)) {
+                $html .= sprintf('<small class="text-muted">%d %s</small>', 
+                    $search['unique_users'], 
+                    $lang === 'ja' ? 'ユーザー' : 'users'
+                );
+            }
             $html .= '</div>';
             $html .= '</a>';
         }

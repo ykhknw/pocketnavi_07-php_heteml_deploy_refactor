@@ -126,118 +126,42 @@
     <!-- Popular Searches -->
     <div class="card">
         <div class="card-header">
-            <h6 class="mb-0">
-                <i data-lucide="trending-up" class="me-2" style="width: 16px; height: 16px;"></i>
-                <?php echo t('popularSearches', $lang); ?>
+            <h6 class="mb-0 d-flex justify-content-between align-items-center">
+                <span>
+                    <i data-lucide="trending-up" class="me-2" style="width: 16px; height: 16px;"></i>
+                    <?php echo t('popularSearches', $lang); ?>
+                </span>
+                <button type="button" 
+                        class="btn btn-link btn-sm p-0 text-muted" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#popularSearchesModal"
+                        onclick="loadPopularSearchesModal()"
+                        title="<?php echo $lang === 'ja' ? 'もっと見る' : 'View More'; ?>"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top">
+                    <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
+                </button>
             </h6>
         </div>
         <div class="card-body">
-            <?php if (!empty($popularSearches)): ?>
-                <div class="list-group list-group-flush">
-                    <?php foreach ($popularSearches as $search): ?>
-                        <?php 
-                        // リンクを直接生成（一時的な修正）
-                        if (isset($search['search_type']) && $search['search_type'] === 'prefecture') {
-                            // 都道府県検索の場合
-                            $prefectureEn = '';
-                            if (isset($search['filters'])) {
-                                $filters = json_decode($search['filters'], true);
-                                $prefectureEn = $filters['prefecture_en'] ?? '';
-                            }
-                            
-                            if ($prefectureEn) {
-                                $link = '/index.php?prefectures=' . urlencode($prefectureEn);
-                            } else {
-                                // 日本語名から英語名に変換
-                                $prefectureTranslations = [
-                                    '東京都' => 'Tokyo', '京都府' => 'Kyoto', '大阪府' => 'Osaka',
-                                    '愛知県' => 'Aichi', '神奈川県' => 'Kanagawa', '埼玉県' => 'Saitama',
-                                    '千葉県' => 'Chiba', '兵庫県' => 'Hyogo', '福岡県' => 'Fukuoka',
-                                    '北海道' => 'Hokkaido', '青森県' => 'Aomori', '岩手県' => 'Iwate',
-                                    '宮城県' => 'Miyagi', '秋田県' => 'Akita', '山形県' => 'Yamagata',
-                                    '福島県' => 'Fukushima', '茨城県' => 'Ibaraki', '栃木県' => 'Tochigi',
-                                    '群馬県' => 'Gunma', '新潟県' => 'Niigata', '富山県' => 'Toyama',
-                                    '石川県' => 'Ishikawa', '福井県' => 'Fukui', '山梨県' => 'Yamanashi',
-                                    '長野県' => 'Nagano', '岐阜県' => 'Gifu', '静岡県' => 'Shizuoka',
-                                    '三重県' => 'Mie', '滋賀県' => 'Shiga', '奈良県' => 'Nara',
-                                    '和歌山県' => 'Wakayama', '鳥取県' => 'Tottori', '島根県' => 'Shimane',
-                                    '岡山県' => 'Okayama', '広島県' => 'Hiroshima', '山口県' => 'Yamaguchi',
-                                    '徳島県' => 'Tokushima', '香川県' => 'Kagawa', '愛媛県' => 'Ehime',
-                                    '高知県' => 'Kochi', '佐賀県' => 'Saga', '長崎県' => 'Nagasaki',
-                                    '熊本県' => 'Kumamoto', '大分県' => 'Oita', '宮崎県' => 'Miyazaki',
-                                    '鹿児島県' => 'Kagoshima', '沖縄県' => 'Okinawa'
-                                ];
-                                $prefectureEn = $prefectureTranslations[$search['query']] ?? $search['query'];
-                                $link = '/index.php?prefectures=' . urlencode($prefectureEn);
-                            }
-                        } elseif (isset($search['search_type']) && $search['search_type'] === 'architect') {
-                            // 建築家検索の場合
-                            $architectSlug = '';
-                            if (isset($search['filters'])) {
-                                $filters = json_decode($search['filters'], true);
-                                $architectSlug = $filters['architect_slug'] ?? $filters['identifier'] ?? '';
-                            }
-                            
-                            if ($architectSlug) {
-                                $link = '/architects/' . $architectSlug . '/';
-                            } else {
-                                // クエリから直接検索（一時的な処理）
-                                $link = '/index.php?q=' . urlencode($search['query']) . '&type=architect';
-                            }
-                        } else {
-                            $link = $search['link'] ?? '/index.php?q=' . urlencode($search['query']);
-                        }
-                        
-                        $separator = (strpos($link, '?') !== false) ? '&' : '?';
-                        $finalLink = $link . $separator . 'lang=' . $lang;
-                        
-                        // デバッグ用
-                        error_log("Sidebar debug - query: " . $search['query'] . ", search_type: " . ($search['search_type'] ?? 'null') . ", link: " . $link . ", finalLink: " . $finalLink);
-                        
-                        // 一時的なデバッグ表示（本番では削除）
-                        if ($search['query'] === '愛知県' || $search['query'] === '竹中工務店') {
-                            echo "<!-- DEBUG: " . $search['query'] . " - search_type: " . ($search['search_type'] ?? 'null') . ", page_type: " . ($search['page_type'] ?? 'null') . ", link: " . $link . " -->";
-                            echo "<!-- DEBUG: Full search array: " . json_encode($search) . " -->";
-                        }
-                        ?>
-                        <a href="<?php echo htmlspecialchars($finalLink); ?>" 
-                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                           title="<?php echo htmlspecialchars($search['query']); ?>">
-                            <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-                                <span class="text-truncate" style="max-width: 100%;" title="<?php echo htmlspecialchars($search['query']); ?>">
-                                    <?php echo htmlspecialchars($search['query']); ?>
-                                </span>
-                                <?php if (isset($search['page_type']) && $search['page_type']): ?>
-                                    <small class="text-muted text-truncate" style="max-width: 100%;">
-                                        <?php 
-                                        $pageTypeLabels = [
-                                            'architect' => $lang === 'ja' ? '建築家' : 'Architect',
-                                            'building' => $lang === 'ja' ? '建築物' : 'Building',
-                                            'prefecture' => $lang === 'ja' ? '都道府県' : 'Prefecture'
-                                        ];
-                                        echo $pageTypeLabels[$search['page_type']] ?? '';
-                                        ?>
-                                    </small>
-                                <?php endif; ?>
-                            </div>
-                            <span class="badge bg-primary rounded-pill flex-shrink-0 ms-2"><?php echo $search['count']; ?></span>
-                        </a>
-                    <?php endforeach; ?>
+            <!-- サイドバー用の人気検索データを取得 -->
+            <div id="sidebar-popular-searches-container">
+                <!-- ローディング表示 -->
+                <div id="sidebar-loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                    </div>
                 </div>
-                
-                <!-- もっと見るボタン -->
-                <button class="btn btn-outline-primary btn-sm w-100 mt-2" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#popularSearchesModal"
-                        onclick="loadPopularSearchesModal()">
-                    <i data-lucide="more-horizontal" class="me-1" style="width: 14px; height: 14px;"></i>
-                    <?php echo $lang === 'ja' ? 'もっと見る' : 'View More'; ?>
-                </button>
-            <?php else: ?>
-                <p class="text-muted mb-0">
-                    <?php echo $lang === 'ja' ? '人気の検索がありません。' : 'No popular searches available.'; ?>
-                </p>
-            <?php endif; ?>
+            </div>
+            
+            <!-- もっと見るボタン -->
+            <button class="btn btn-outline-primary btn-sm w-100 mt-2" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#popularSearchesModal"
+                    onclick="loadPopularSearchesModal()">
+                <i data-lucide="more-horizontal" class="me-1" style="width: 14px; height: 14px;"></i>
+                <?php echo $lang === 'ja' ? 'もっと見る' : 'View More'; ?>
+            </button>
         </div>
     </div>
 </div>
@@ -254,6 +178,40 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- タブナビゲーション -->
+                <ul class="nav nav-tabs mb-3" id="popularSearchesTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-content" type="button" role="tab" aria-controls="all-content" aria-selected="true">
+                            <i data-lucide="list" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? 'すべて' : 'All'; ?>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="architect-tab" data-bs-toggle="tab" data-bs-target="#architect-content" type="button" role="tab" aria-controls="architect-content" aria-selected="false">
+                            <i data-lucide="circle-user-round" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? '建築家' : 'Architect'; ?>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="building-tab" data-bs-toggle="tab" data-bs-target="#building-content" type="button" role="tab" aria-controls="building-content" aria-selected="false">
+                            <i data-lucide="building" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? '建築物' : 'Building'; ?>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="prefecture-tab" data-bs-toggle="tab" data-bs-target="#prefecture-content" type="button" role="tab" aria-controls="prefecture-content" aria-selected="false">
+                            <i data-lucide="map-pin" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? '都道府県' : 'Prefecture'; ?>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-content" type="button" role="tab" aria-controls="text-content" aria-selected="false">
+                            <i data-lucide="type" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? 'テキスト' : 'Text'; ?>
+                        </button>
+                    </li>
+                </ul>
+                
                 <!-- 検索・フィルタエリア -->
                 <div class="row mb-3">
                     <div class="col-md-8">
@@ -267,16 +225,82 @@
                     </div>
                 </div>
                 
-                <!-- ローディング表示 -->
-                <div id="popularSearchesLoading" class="text-center py-4" style="display: none;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                <!-- タブコンテンツ -->
+                <div class="tab-content" id="popularSearchesTabContent">
+                    <!-- すべて -->
+                    <div class="tab-pane fade show active" id="all-content" role="tabpanel" aria-labelledby="all-tab">
+                        <!-- ローディング表示 -->
+                        <div id="all-loading" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                            </div>
+                        </div>
+                        
+                        <!-- 検索結果表示エリア -->
+                        <div id="all-content-area">
+                            <!-- ここに検索結果が動的に読み込まれる -->
+                        </div>
                     </div>
-                </div>
-                
-                <!-- 検索結果表示エリア -->
-                <div id="popularSearchesContent">
-                    <!-- ここに検索結果が動的に読み込まれる -->
+                    
+                    <!-- 建築家 -->
+                    <div class="tab-pane fade" id="architect-content" role="tabpanel" aria-labelledby="architect-tab">
+                        <!-- ローディング表示 -->
+                        <div id="architect-loading" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                            </div>
+                        </div>
+                        
+                        <!-- 検索結果表示エリア -->
+                        <div id="architect-content-area">
+                            <!-- ここに検索結果が動的に読み込まれる -->
+                        </div>
+                    </div>
+                    
+                    <!-- 建築物 -->
+                    <div class="tab-pane fade" id="building-content" role="tabpanel" aria-labelledby="building-tab">
+                        <!-- ローディング表示 -->
+                        <div id="building-loading" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                            </div>
+                        </div>
+                        
+                        <!-- 検索結果表示エリア -->
+                        <div id="building-content-area">
+                            <!-- ここに検索結果が動的に読み込まれる -->
+                        </div>
+                    </div>
+                    
+                    <!-- 都道府県 -->
+                    <div class="tab-pane fade" id="prefecture-content" role="tabpanel" aria-labelledby="prefecture-tab">
+                        <!-- ローディング表示 -->
+                        <div id="prefecture-loading" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                            </div>
+                        </div>
+                        
+                        <!-- 検索結果表示エリア -->
+                        <div id="prefecture-content-area">
+                            <!-- ここに検索結果が動的に読み込まれる -->
+                        </div>
+                    </div>
+                    
+                    <!-- テキスト -->
+                    <div class="tab-pane fade" id="text-content" role="tabpanel" aria-labelledby="text-tab">
+                        <!-- ローディング表示 -->
+                        <div id="text-loading" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden"><?php echo $lang === 'ja' ? '読み込み中...' : 'Loading...'; ?></span>
+                            </div>
+                        </div>
+                        
+                        <!-- 検索結果表示エリア -->
+                        <div id="text-content-area">
+                            <!-- ここに検索結果が動的に読み込まれる -->
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

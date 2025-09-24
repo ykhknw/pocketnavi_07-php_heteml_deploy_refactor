@@ -16,6 +16,117 @@ class SearchLogService {
     }
     
     /**
+     * データベース接続を取得
+     */
+    public function getDatabase() {
+        return $this->db;
+    }
+    
+    /**
+     * 週間トレンド検索を更新（必要に応じて）
+     */
+    public function updateWeeklyTrendingIfNeeded() {
+        try {
+            // 最後の更新日時をチェック
+            $stmt = $this->db->query("SELECT last_update FROM trending_cache WHERE cache_key = 'weekly_trending'");
+            $lastUpdate = $stmt->fetch();
+            
+            $oneWeekAgo = date('Y-m-d H:i:s', strtotime('-1 week'));
+            
+            // 1週間以上経過している場合のみ更新
+            if (!$lastUpdate || $lastUpdate['last_update'] < $oneWeekAgo) {
+                $this->updateWeeklyTrendingSearches();
+                
+                // 更新日時を記録
+                $this->db->exec("
+                    INSERT INTO trending_cache (cache_key, last_update, data) 
+                    VALUES ('weekly_trending', NOW(), '{}')
+                    ON DUPLICATE KEY UPDATE last_update = NOW()
+                ");
+                
+                error_log("Weekly trending searches updated");
+            }
+        } catch (Exception $e) {
+            error_log("Update weekly trending error: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 週間トレンド検索を計算・更新
+     */
+    private function updateWeeklyTrendingSearches() {
+        try {
+            // 過去1週間の人気検索を計算
+            $sql = "
+                SELECT 
+                    query,
+                    search_type,
+                    COUNT(*) as total_searches,
+                    COUNT(DISTINCT COALESCE(user_id, user_session_id, ip_address)) as unique_users,
+                    MAX(searched_at) as last_searched
+                FROM global_search_history
+                WHERE searched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                GROUP BY query, search_type
+                HAVING COUNT(*) >= 3
+                ORDER BY 
+                    total_searches DESC, 
+                    unique_users DESC,
+                    last_searched DESC
+                LIMIT 3
+            ";
+            
+            $stmt = $this->db->query($sql);
+            $trendingSearches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // トレンド検索テーブルを更新
+            $this->db->exec("DELETE FROM weekly_trending_searches");
+            
+            foreach ($trendingSearches as $search) {
+                $insertSql = "
+                    INSERT INTO weekly_trending_searches 
+                    (query, search_type, total_searches, unique_users, last_searched, created_at)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                ";
+                $this->db->prepare($insertSql)->execute([
+                    $search['query'],
+                    $search['search_type'],
+                    $search['total_searches'],
+                    $search['unique_users'],
+                    $search['last_searched']
+                ]);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Update weekly trending searches error: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 週間トレンド検索を取得
+     */
+    public function getWeeklyTrendingSearches() {
+        try {
+            // 必要に応じて更新
+            $this->updateWeeklyTrendingIfNeeded();
+            
+            // トレンド検索を取得
+            $sql = "
+                SELECT query, search_type, total_searches, unique_users, last_searched
+                FROM weekly_trending_searches
+                ORDER BY total_searches DESC, unique_users DESC
+                LIMIT 3
+            ";
+            
+            $stmt = $this->db->query($sql);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (Exception $e) {
+            error_log("Get weekly trending searches error: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
      * 検索ログを記録
      */
     public function logSearch($query, $searchType = 'text', $filters = [], $userId = null) {
@@ -412,9 +523,14 @@ class SearchLogService {
         $params[] = $offset;
         
         try {
+            // デバッグ情報をログに記録
+            error_log("SearchLogService - searchType: '$searchType', whereClause: '$whereClause', params: " . json_encode($params));
+            
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $searches = $stmt->fetchAll();
+            
+            error_log("SearchLogService - found " . count($searches) . " searches");
             
             // リンク情報を追加
             foreach ($searches as &$search) {

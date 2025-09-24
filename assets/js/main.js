@@ -5,7 +5,6 @@ let markers = [];
 
 // 地図の初期化
 function initMap(center = [35.6762, 139.6503], buildings = []) {
-    console.log('initMap called with center:', center, 'buildings:', buildings);
     
     // マップ要素の存在確認
     const mapElement = document.getElementById('map');
@@ -20,14 +19,12 @@ function initMap(center = [35.6762, 139.6503], buildings = []) {
     
     try {
         map = L.map('map').setView(center, 15);
-        console.log('Map created successfully');
         
         // タイルレイヤーの追加
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
-        console.log('Tile layer added successfully');
     } catch (error) {
         console.error('Error creating map:', error);
         return;
@@ -36,8 +33,6 @@ function initMap(center = [35.6762, 139.6503], buildings = []) {
     // ズームコントロールの位置調整
     map.zoomControl.setPosition('bottomleft');
     
-    // ページ情報を再確認
-    console.log('initMap - Page info:', window.pageInfo);
     
     // マーカーの追加
     addMarkers(buildings);
@@ -57,7 +52,6 @@ function addMarkers(buildings) {
     
     // ページ情報を取得（通し番号計算用）
     const pageInfo = window.pageInfo || { currentPage: 1, limit: 10 };
-    console.log('Page info for markers:', pageInfo); // デバッグ用
     
     buildings.forEach((building, index) => {
         if (building.lat && building.lng && building.lat !== 0 && building.lng !== 0) {
@@ -77,7 +71,6 @@ function addMarkers(buildings) {
             } else {
                 // 一覧ページ用の数字付きマーカー（通し番号）
                 const globalIndex = (pageInfo.currentPage - 1) * pageInfo.limit + index + 1;
-                console.log(`Marker ${index}: local=${index + 1}, global=${globalIndex}, page=${pageInfo.currentPage}, limit=${pageInfo.limit}`); // デバッグ用
                 icon = L.divIcon({
                     html: `<div style="background-color: #2563eb; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${globalIndex}</div>`,
                     className: 'custom-marker',
@@ -301,20 +294,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 言語切り替え機能の初期化
     initLanguageSwitch();
     
-    // ページ情報を確認
-    console.log('DOMContentLoaded - Page info:', window.pageInfo);
     
     // 建築物データの取得
     const buildingCards = document.querySelectorAll('.building-card');
-    console.log('Found building cards:', buildingCards.length); // デバッグ用
     
     const buildings = Array.from(buildingCards).map((card, index) => {
-        console.log(`Card ${index}:`, {
-            lat: card.dataset.lat,
-            lng: card.dataset.lng,
-            title: card.dataset.title,
-            titleEn: card.dataset['title-en']
-        }); // デバッグ用
         
         const lat = parseFloat(card.dataset.lat);
         const lng = parseFloat(card.dataset.lng);
@@ -336,7 +320,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }).filter(building => building !== null);
     
-    console.log('Buildings for map:', buildings); // デバッグ用
     
     // 地図の初期化（ページ情報の設定を待つ）
     if (document.getElementById('map')) {
