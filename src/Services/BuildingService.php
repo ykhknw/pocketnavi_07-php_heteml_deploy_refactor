@@ -939,7 +939,7 @@ class BuildingService {
         if (!empty($row['has_photo'])) {
             $uid = $row['uid'] ?? '';
             $photo = $row['has_photo'];
-            $thumbnailUrl = "https://kenchikuka.com/pictures/{$uid}/{$photo}";
+            $thumbnailUrl = "/pictures/{$uid}/{$photo}";
         }
         
         return [

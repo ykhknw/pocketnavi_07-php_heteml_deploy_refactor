@@ -304,7 +304,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-outline-primary w-100" data-bs-dismiss="modal">
+                    <i data-lucide="x" class="me-1" style="width: 16px; height: 16px;"></i>
                     <?php echo $lang === 'ja' ? '閉じる' : 'Close'; ?>
                 </button>
             </div>

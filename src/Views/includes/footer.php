@@ -22,19 +22,19 @@
 
 <!-- Scroll to Top Button -->
 <button id="scrollToTopBtn" class="btn btn-primary position-fixed d-flex align-items-center justify-content-center" style="
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
+    bottom: 30px;
+    right: 30px;
+    width: 75px;
+    height: 75px;
     border-radius: 50%;
     display: none !important;
-    z-index: 1000;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 10000;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
     transition: all 0.3s ease;
     padding: 0;
     border: none;
 ">
-    <i data-lucide="arrow-up-to-line" style="width: 20px; height: 20px;"></i>
+    <i data-lucide="arrow-up-to-line" style="width: 30px; height: 30px;"></i>
 </button>
 
 <script>
@@ -76,6 +76,17 @@ document.addEventListener('DOMContentLoaded', function() {
             top: 0,
             behavior: 'smooth'
         });
+    });
+    
+    // Add hover effects
+    scrollToTopBtn.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.1)';
+        this.style.boxShadow = '0 8px 16px rgba(0,0,0,0.4)';
+    });
+    
+    scrollToTopBtn.addEventListener('mouseleave', function() {
+        this.style.transform = 'scale(1)';
+        this.style.boxShadow = '0 6px 12px rgba(0,0,0,0.3)';
     });
     
     // Initialize Lucide icons for the button

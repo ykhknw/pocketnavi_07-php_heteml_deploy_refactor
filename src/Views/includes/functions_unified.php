@@ -31,8 +31,8 @@ function generateThumbnailUrl($uid, $hasPhoto) {
         return '';
     }
     
-    // 新しいURL形式: https://kenchikuka.com/pictures/{uid}/{has_photo}
-    return 'https://kenchikuka.com/pictures/' . urlencode($uid) . '/' . urlencode($hasPhoto);
+    // ディレクトリ指定形式: /pictures/{uid}/{has_photo}
+    return '/pictures/' . urlencode($uid) . '/' . urlencode($hasPhoto);
 }
 
 /**

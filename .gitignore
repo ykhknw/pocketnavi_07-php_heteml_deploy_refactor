@@ -1,0 +1,12 @@
+# 画像関連フォルダを除外
+pictures/
+screen_shots_3_webp/
+
+# その他の除外推奨項目
+*.log
+.env
+/vendor/
+.DS_Store
+Thumbs.db
+*.tmp
+*.cache

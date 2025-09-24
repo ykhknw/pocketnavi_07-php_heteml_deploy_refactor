@@ -103,7 +103,7 @@ function loadPopularSearchesData() {
     // パラメータを構築
     const params = new URLSearchParams({
         page: currentPage,
-        limit: 20,
+        limit: 10,
         lang: getCurrentLanguage()
     });
     
@@ -334,9 +334,10 @@ function loadSidebarPopularSearches() {
     loading.style.display = 'block';
     
     // APIを呼び出し
+    const deviceLimit = getDeviceLimit();
     const params = new URLSearchParams({
         page: 1,
-        limit: 20,
+        limit: deviceLimit,
         lang: getCurrentLanguage()
     });
     
@@ -413,8 +414,8 @@ function generateSidebarHTML(modalHTML, searchesData) {
         });
     }
     
-    // Get the processed HTML
-    const processedHTML = tempContainer.innerHTML;
+    // Get the processed HTML and remove pagination
+    const processedHTML = removePaginationFromHtml(tempContainer.innerHTML);
     
     return `
         <!-- タブナビゲーション -->
@@ -547,7 +548,79 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSearchFilters();
     initializeSidebarTooltips();
     loadSidebarPopularSearches();
+    
+    // ウィンドウサイズ変更時の処理
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            // サイドバーのデータを再読み込み
+            const activeSidebarTab = document.querySelector('#sidebarPopularSearchesTabContent .nav-link.active');
+            if (activeSidebarTab) {
+                const tabId = activeSidebarTab.id;
+                let currentTab = 'all';
+                if (tabId === 'sidebar-architect-tab') {
+                    currentTab = 'architect';
+                } else if (tabId === 'sidebar-building-tab') {
+                    currentTab = 'building';
+                } else if (tabId === 'sidebar-prefecture-tab') {
+                    currentTab = 'prefecture';
+                } else if (tabId === 'sidebar-text-tab') {
+                    currentTab = 'text';
+                }
+                filterSidebarSearches(currentTab);
+            }
+        }, 250); // 250ms後に実行（リサイズ完了を待つ）
+    });
 });
+
+/**
+ * デバイスサイズに基づいて表示件数を取得
+ */
+function getDeviceLimit() {
+    const width = window.innerWidth;
+    
+    if (width >= 992) {
+        // デスクトップ: 10件
+        return 10;
+    } else if (width >= 768) {
+        // タブレット: 6件
+        return 6;
+    } else {
+        // モバイル: 4件
+        return 4;
+    }
+}
+
+/**
+ * HTMLからページネーション部分を削除
+ */
+function removePaginationFromHtml(html) {
+    // 一時的なコンテナを作成してHTMLを解析
+    const tempContainer = document.createElement('div');
+    tempContainer.innerHTML = html;
+    
+    // ページネーション関連の要素を削除
+    const paginationElements = tempContainer.querySelectorAll('.pagination, .pagination-wrapper, nav[aria-label="Page navigation"]');
+    paginationElements.forEach(element => {
+        element.remove();
+    });
+    
+    // ページネーション関連のクラスを持つ要素も削除
+    const paginationClassElements = tempContainer.querySelectorAll('[class*="pagination"]');
+    paginationClassElements.forEach(element => {
+        if (element.classList.contains('pagination') || 
+            element.classList.contains('pagination-wrapper') ||
+            element.textContent.includes('前へ') || 
+            element.textContent.includes('次へ') ||
+            element.textContent.includes('Previous') || 
+            element.textContent.includes('Next')) {
+            element.remove();
+        }
+    });
+    
+    return tempContainer.innerHTML;
+}
 
 /**
  * サイドバーの検索結果をフィルタリング
@@ -572,9 +645,10 @@ function filterSidebarSearches(searchType) {
     }
     
     // 特定のタブの場合はAPIからデータを取得
+    const deviceLimit = getDeviceLimit();
     const params = new URLSearchParams({
         page: 1,
-        limit: 20,
+        limit: deviceLimit,
         lang: getCurrentLanguage(),
         search_type: searchType
     });
@@ -600,7 +674,9 @@ function filterSidebarSearches(searchType) {
                 }
                 
                 if (targetList) {
-                    targetList.innerHTML = data.data.html;
+                    // ページネーションを削除してHTMLを設定
+                    const cleanHtml = removePaginationFromHtml(data.data.html);
+                    targetList.innerHTML = cleanHtml;
                 }
             }
         })
