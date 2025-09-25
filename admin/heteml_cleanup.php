@@ -5,28 +5,47 @@
  * HETEMLの制約に最適化された管理画面
  */
 
-// セキュリティチェック
-$adminKey = $_GET['key'] ?? $_POST['key'] ?? '';
-$validKey = 'heteml_admin_2024'; // 本番環境では環境変数から取得
+// エラー表示を有効にする（デバッグ用）
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-if ($adminKey !== $validKey) {
-    http_response_code(403);
-    die('アクセスが拒否されました。');
+// セキュリティチェック（セッションベースに変更）
+session_start();
+
+// セッションベースの認証チェック
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit;
 }
 
 // HETEML環境の制約を設定
 ini_set('max_execution_time', 30);
 ini_set('memory_limit', '128M');
 
+// データベース接続
+try {
+    $host = 'mysql320.phy.heteml.lan';
+    $db_name = '_shinkenchiku_02';
+    $username = '_shinkenchiku_02';
+    $password = 'ipgdfahuqbg3';
+    
+    $pdo = new PDO("mysql:host={$host};dbname={$db_name};charset=utf8mb4", $username, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
+    ]);
+} catch (PDOException $e) {
+    die("データベース接続エラー: " . $e->getMessage());
+}
+
 // 必要なファイルを読み込み
-require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../src/Services/SearchLogService.php';
 require_once __DIR__ . '/../scripts/heteml_cleanup_config.php';
 
 $config = require __DIR__ . '/../scripts/heteml_cleanup_config.php';
 $hetemlConfig = $config['heteml'];
 
-$searchLogService = new SearchLogService();
+$searchLogService = new SearchLogService($pdo);
 $message = '';
 $error = '';
 $stats = null;

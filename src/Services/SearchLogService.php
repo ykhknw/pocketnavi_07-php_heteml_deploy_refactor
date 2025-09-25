@@ -8,8 +8,18 @@
 class SearchLogService {
     private $db;
     
-    public function __construct() {
-        $this->db = getDB();
+    public function __construct($database = null) {
+        if ($database !== null) {
+            $this->db = $database;
+        } else {
+            // フォールバック: getDB()関数が存在する場合
+            if (function_exists('getDB')) {
+                $this->db = getDB();
+            } else {
+                throw new Exception("Database connection not provided and getDB() function not available");
+            }
+        }
+        
         if ($this->db === null) {
             throw new Exception("Database connection failed");
         }
