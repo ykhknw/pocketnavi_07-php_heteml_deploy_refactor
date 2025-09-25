@@ -93,15 +93,9 @@ try {
             // 表示用タイトルを決定（英語ユーザー向け対応）
             $displayTitle = $search['query'];
             if ($lang === 'en') {
-                // 英語ユーザーの場合、適切な英語表示データを使用
+                // 英語ユーザーの場合、title_enが利用可能ならそれを使用
                 $filters = json_decode($search['filters'] ?? '{}', true);
-                
-                // 都道府県検索の場合
-                if ($search['search_type'] === 'prefecture' && isset($filters['prefecture_en']) && !empty($filters['prefecture_en'])) {
-                    $displayTitle = $filters['prefecture_en'];
-                }
-                // 建築物・建築家検索の場合
-                else if (isset($filters['title_en']) && !empty($filters['title_en'])) {
+                if (isset($filters['title_en']) && !empty($filters['title_en'])) {
                     $displayTitle = $filters['title_en'];
                 }
             }

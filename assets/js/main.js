@@ -262,9 +262,9 @@ function getDirections(lat, lng) {
     window.open(url, '_blank');
 }
 
-// グーグルマップで見る
+// グーグルマップで見る（航空写真）
 function viewOnGoogleMaps(lat, lng) {
-    const url = `https://maps.google.com/?q=${lat},${lng}`;
+    const url = `https://maps.google.com/?q=${lat},${lng}&t=k`;
     window.open(url, '_blank');
 }
 

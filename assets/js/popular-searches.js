@@ -15,31 +15,26 @@ function loadPopularSearchesModal() {
     currentSearchQuery = '';
     currentSearchType = '';
     
-    // サイドバーで選択中のタブを検出
-    let activeSidebarTab = document.querySelector('#sidebarPopularSearchesTabContent .nav-link.active');
-    if (!activeSidebarTab) {
-        activeSidebarTab = document.querySelector('.nav-link.active');
-    }
-    if (!activeSidebarTab) {
-        activeSidebarTab = document.querySelector('[id*="sidebar"][id*="tab"].active');
-    }
+    // モーダル内で選択中のタブを検出（デフォルトは'all'）
+    let activeModalTab = document.querySelector('#popularSearchesTabs .nav-link.active');
     
-    if (activeSidebarTab) {
-        const tabId = activeSidebarTab.id;
-        if (tabId === 'sidebar-all-tab') {
+    if (activeModalTab) {
+        const tabId = activeModalTab.id;
+        if (tabId === 'all-tab') {
             currentTab = 'all';
-        } else if (tabId === 'sidebar-architect-tab') {
+        } else if (tabId === 'architect-tab') {
             currentTab = 'architect';
-        } else if (tabId === 'sidebar-building-tab') {
+        } else if (tabId === 'building-tab') {
             currentTab = 'building';
-        } else if (tabId === 'sidebar-prefecture-tab') {
+        } else if (tabId === 'prefecture-tab') {
             currentTab = 'prefecture';
-        } else if (tabId === 'sidebar-text-tab') {
+        } else if (tabId === 'text-tab') {
             currentTab = 'text';
         } else {
             currentTab = 'all';
         }
     } else {
+        // デフォルトは'all'タブ
         currentTab = 'all';
     }
     
@@ -77,27 +72,55 @@ function loadPopularSearchesModal() {
         }
     });
     
-    // データを読み込み
-    loadPopularSearchesData();
+    // モーダルが完全に表示されてからデータを読み込み
+    setTimeout(() => {
+        loadPopularSearchesData();
+    }, 100);
 }
 
 /**
  * 人気検索ワードデータを読み込む
  */
 function loadPopularSearchesData() {
+    console.log('loadPopularSearchesData called with currentTab:', currentTab);
+    
     // 現在のタブに応じて正しい要素を取得
     const loadingElement = document.getElementById(currentTab + '-loading');
     const contentElement = document.getElementById(currentTab + '-content-area');
+    
+    console.log('Elements found:', {
+        loadingElement: loadingElement,
+        contentElement: contentElement,
+        loadingElementId: currentTab + '-loading',
+        contentElementId: currentTab + '-content-area'
+    });
     
     if (!loadingElement || !contentElement) {
         console.error('Loading or content element not found for tab:', currentTab);
         console.error('Loading element:', loadingElement);
         console.error('Content element:', contentElement);
+        console.error('Available elements:', {
+            'all-loading': document.getElementById('all-loading'),
+            'all-content-area': document.getElementById('all-content-area'),
+            'architect-loading': document.getElementById('architect-loading'),
+            'architect-content-area': document.getElementById('architect-content-area'),
+            'building-loading': document.getElementById('building-loading'),
+            'building-content-area': document.getElementById('building-content-area'),
+            'prefecture-loading': document.getElementById('prefecture-loading'),
+            'prefecture-content-area': document.getElementById('prefecture-content-area'),
+            'text-loading': document.getElementById('text-loading'),
+            'text-content-area': document.getElementById('text-content-area')
+        });
         return;
     }
     
     // ローディング表示
-    loadingElement.style.display = 'block';
+    try {
+        loadingElement.style.display = 'block';
+    } catch (error) {
+        console.error('Error setting loading display:', error);
+        return;
+    }
     contentElement.innerHTML = '';
     
     // パラメータを構築

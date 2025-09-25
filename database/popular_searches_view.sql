@@ -1,5 +1,5 @@
 -- 人気検索ビューの作成
--- 過去30日間の人気検索を集計
+-- 過去5日間の人気検索を集計
 
 CREATE OR REPLACE VIEW `popular_searches_view` AS
 SELECT 
@@ -13,9 +13,9 @@ SELECT
     MAX(JSON_EXTRACT(`filters`, '$.title')) as `title`,
     MAX(`filters`) as `filters`
 FROM `global_search_history` 
-WHERE `searched_at` >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+WHERE `searched_at` >= DATE_SUB(NOW(), INTERVAL 5 DAY)
     AND `search_type` IS NOT NULL 
     AND `search_type` != ''
 GROUP BY `query`, `search_type`
-HAVING COUNT(*) >= 2
+HAVING COUNT(*) >= 1
 ORDER BY `search_count` DESC, `last_searched` DESC;

@@ -173,7 +173,7 @@
             <div class="modal-header">
                 <h5 class="modal-title" id="popularSearchesModalLabel">
                     <i data-lucide="trending-up" class="me-2" style="width: 20px; height: 20px;"></i>
-                    人気の検索
+                    <?php echo t('popularSearches', $lang); ?>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

@@ -56,7 +56,7 @@ class SearchLogService {
      */
     private function updateWeeklyTrendingSearches() {
         try {
-            // 過去1週間の人気検索を計算
+            // 過去5日間の人気検索を計算
             $sql = "
                 SELECT 
                     query,
@@ -65,9 +65,9 @@ class SearchLogService {
                     COUNT(DISTINCT COALESCE(user_id, user_session_id, ip_address)) as unique_users,
                     MAX(searched_at) as last_searched
                 FROM global_search_history
-                WHERE searched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                WHERE searched_at >= DATE_SUB(NOW(), INTERVAL 5 DAY)
                 GROUP BY query, search_type
-                HAVING COUNT(*) >= 3
+                HAVING COUNT(*) >= 2
                 ORDER BY 
                     total_searches DESC, 
                     unique_users DESC,
@@ -138,8 +138,11 @@ class SearchLogService {
         $sessionId = $this->getSessionId();
         $ipAddress = $this->getClientIpAddress();
         
-        // 検索タイプに応じて追加情報を取得
-        $additionalData = $this->getAdditionalSearchData($query, $searchType);
+        // 言語情報を取得
+        $lang = $filters['lang'] ?? 'ja';
+        
+        // 検索タイプに応じて追加情報を取得（英語表示対応）
+        $additionalData = $this->getAdditionalSearchData($query, $searchType, $lang);
         $filters = array_merge($filters, $additionalData);
         
         $sql = "
@@ -168,9 +171,9 @@ class SearchLogService {
     }
     
     /**
-     * 検索タイプに応じて追加データを取得
+     * 検索タイプに応じて追加データを取得（英語表示対応）
      */
-    private function getAdditionalSearchData($query, $searchType) {
+    private function getAdditionalSearchData($query, $searchType, $lang = 'ja') {
         $additionalData = [];
         
         try {
@@ -184,6 +187,11 @@ class SearchLogService {
                             'architect_name_ja' => $architectData['name_ja'],
                             'architect_name_en' => $architectData['name_en']
                         ];
+                        
+                        // 日本語検索の場合、英語表示用データを追加
+                        if ($lang === 'ja') {
+                            $additionalData['title_en'] = $architectData['name_en'];
+                        }
                     }
                     break;
                     
@@ -194,6 +202,11 @@ class SearchLogService {
                             'prefecture_ja' => $prefectureData['prefectures'],
                             'prefecture_en' => $prefectureData['prefecturesEn']
                         ];
+                        
+                        // 日本語検索の場合、英語表示用データを追加
+                        if ($lang === 'ja') {
+                            $additionalData['title_en'] = $prefectureData['prefecturesEn'];
+                        }
                     }
                     break;
                     
@@ -206,7 +219,16 @@ class SearchLogService {
                             'building_title_ja' => $buildingData['title'],
                             'building_title_en' => $buildingData['titleEn']
                         ];
+                        
+                        // 日本語検索の場合、英語表示用データを追加
+                        if ($lang === 'ja') {
+                            $additionalData['title_en'] = $buildingData['titleEn'];
+                        }
                     }
+                    break;
+                    
+                case 'text':
+                    // テキスト検索の場合は英語表示用データを追加しない
                     break;
             }
         } catch (Exception $e) {
@@ -352,12 +374,21 @@ class SearchLogService {
         // クエリ文字列を生成
         $query = $this->generateQueryFromPageType($pageType, $identifier, $title);
         
+        // 言語情報を取得
+        $lang = $additionalData['lang'] ?? 'ja';
+        
         // フィルター情報を構築
         $filters = array_merge([
             'pageType' => $pageType,
             'identifier' => $identifier,
             'title' => $title
         ], $additionalData);
+        
+        // 英語表示用データを追加（日本語検索の場合のみ）
+        if ($lang === 'ja' && in_array($pageType, ['building', 'architect', 'prefecture'])) {
+            $englishData = $this->getAdditionalSearchData($query, $searchType, $lang);
+            $filters = array_merge($filters, $englishData);
+        }
         
         $sql = "
             INSERT INTO global_search_history 
@@ -480,7 +511,7 @@ class SearchLogService {
     public function getPopularSearchesForModal($page = 1, $limit = 20, $searchQuery = '', $searchType = '') {
         $offset = ($page - 1) * $limit;
         
-        $whereClauses = ["searched_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"];
+        $whereClauses = ["searched_at >= DATE_SUB(NOW(), INTERVAL 5 DAY)"];
         $params = [];
         
         // 検索クエリフィルタ
@@ -670,7 +701,7 @@ class SearchLogService {
                 MAX(JSON_EXTRACT(filters, '$.title')) as title,
                 MAX(filters) as filters
             FROM global_search_history
-            WHERE searched_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            WHERE searched_at >= DATE_SUB(NOW(), INTERVAL 5 DAY)
             AND search_type IS NOT NULL
             AND search_type != ''
             GROUP BY query, search_type
@@ -795,5 +826,231 @@ class SearchLogService {
         }
         
         return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+    
+    /**
+     * 古い検索履歴データをクリーンアップ
+     * 
+     * @param int $retentionDays データ保持期間（日数）
+     * @param bool $archiveImportant 重要なデータをアーカイブするかどうか
+     * @return array クリーンアップ結果
+     */
+    public function cleanupOldSearchHistory($retentionDays = 90, $archiveImportant = true) {
+        $result = [
+            'deleted_count' => 0,
+            'archived_count' => 0,
+            'error' => null
+        ];
+        
+        try {
+            $this->db->beginTransaction();
+            
+            // アーカイブ対象のデータを特定（人気検索ワード）
+            if ($archiveImportant) {
+                $result['archived_count'] = $this->archiveImportantSearches($retentionDays);
+            }
+            
+            // 古いデータを削除
+            $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$retentionDays} days"));
+            
+            $deleteSql = "
+                DELETE FROM global_search_history 
+                WHERE searched_at < ?
+            ";
+            
+            $stmt = $this->db->prepare($deleteSql);
+            $stmt->execute([$cutoffDate]);
+            $result['deleted_count'] = $stmt->rowCount();
+            
+            // インデックスを最適化
+            $this->db->exec("OPTIMIZE TABLE global_search_history");
+            
+            $this->db->commit();
+            
+            error_log("Search history cleanup completed: {$result['deleted_count']} records deleted, {$result['archived_count']} records archived");
+            
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $result['error'] = $e->getMessage();
+            error_log("Search history cleanup error: " . $e->getMessage());
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * 重要な検索データをアーカイブ
+     * 
+     * @param int $retentionDays データ保持期間
+     * @return int アーカイブされたレコード数
+     */
+    private function archiveImportantSearches($retentionDays) {
+        $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$retentionDays} days"));
+        
+        // アーカイブテーブルが存在しない場合は作成
+        $this->createArchiveTableIfNotExists();
+        
+        // 人気検索ワード（過去5日間で2回以上検索されたもの）をアーカイブ
+        $archiveSql = "
+            INSERT INTO global_search_history_archive 
+            (original_id, query, search_type, user_id, user_session_id, ip_address, filters, searched_at, created_at, archived_at)
+            SELECT 
+                id, query, search_type, user_id, user_session_id, ip_address, filters, searched_at, created_at, NOW()
+            FROM global_search_history gsh1
+            WHERE gsh1.searched_at < ?
+            AND gsh1.id IN (
+                SELECT gsh2.id
+                FROM global_search_history gsh2
+                WHERE gsh2.query = gsh1.query 
+                AND gsh2.search_type = gsh1.search_type
+                AND gsh2.searched_at >= DATE_SUB(NOW(), INTERVAL 5 DAY)
+                GROUP BY gsh2.query, gsh2.search_type
+                HAVING COUNT(*) >= 2
+            )
+        ";
+        
+        $stmt = $this->db->prepare($archiveSql);
+        $stmt->execute([$cutoffDate]);
+        
+        return $stmt->rowCount();
+    }
+    
+    /**
+     * アーカイブテーブルを作成（存在しない場合）
+     */
+    private function createArchiveTableIfNotExists() {
+        $createTableSql = "
+            CREATE TABLE IF NOT EXISTS `global_search_history_archive` (
+                `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                `original_id` BIGINT NOT NULL,
+                `query` TEXT NOT NULL,
+                `search_type` VARCHAR(20) NOT NULL,
+                `user_id` BIGINT NULL,
+                `user_session_id` VARCHAR(255) NULL,
+                `ip_address` VARCHAR(45) NULL,
+                `filters` JSON NULL,
+                `searched_at` TIMESTAMP NOT NULL,
+                `created_at` TIMESTAMP NOT NULL,
+                `archived_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_original_id` (`original_id`),
+                INDEX `idx_query` (`query`(100)),
+                INDEX `idx_search_type` (`search_type`),
+                INDEX `idx_searched_at` (`searched_at`),
+                INDEX `idx_archived_at` (`archived_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        
+        $this->db->exec($createTableSql);
+    }
+    
+    /**
+     * データベースの統計情報を取得
+     * 
+     * @return array 統計情報
+     */
+    public function getDatabaseStats() {
+        try {
+            // 現在のテーブルサイズ
+            $sizeSql = "
+                SELECT 
+                    table_name,
+                    ROUND(((data_length + index_length) / 1024 / 1024), 2) AS 'Size (MB)',
+                    table_rows
+                FROM information_schema.tables 
+                WHERE table_schema = DATABASE() 
+                AND table_name IN ('global_search_history', 'global_search_history_archive', 'weekly_trending_searches')
+            ";
+            
+            $stmt = $this->db->query($sizeSql);
+            $tableStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // 検索履歴の統計
+            $historyStatsSql = "
+                SELECT 
+                    COUNT(*) as total_records,
+                    COUNT(DISTINCT query) as unique_queries,
+                    COUNT(DISTINCT search_type) as search_types,
+                    MIN(searched_at) as oldest_record,
+                    MAX(searched_at) as newest_record,
+                    COUNT(CASE WHEN searched_at >= DATE_SUB(NOW(), INTERVAL 3 DAY) THEN 1 END) as records_last_3days,
+                    COUNT(CASE WHEN searched_at >= DATE_SUB(NOW(), INTERVAL 5 DAY) THEN 1 END) as records_last_5days
+                FROM global_search_history
+            ";
+            
+            $stmt = $this->db->query($historyStatsSql);
+            $historyStats = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            return [
+                'table_stats' => $tableStats,
+                'history_stats' => $historyStats,
+                'recommendations' => $this->generateRecommendations($historyStats)
+            ];
+            
+        } catch (Exception $e) {
+            error_log("Get database stats error: " . $e->getMessage());
+            return [
+                'table_stats' => [],
+                'history_stats' => [],
+                'recommendations' => [],
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * データベース管理の推奨事項を生成
+     * 
+     * @param array $stats 統計情報
+     * @return array 推奨事項
+     */
+    private function generateRecommendations($stats) {
+        $recommendations = [];
+        
+        if (empty($stats)) {
+            return $recommendations;
+        }
+        
+        $totalRecords = $stats['total_records'] ?? 0;
+        $recordsLastMonth = $stats['records_last_month'] ?? 0;
+        
+        // レコード数に基づく推奨事項
+        if ($totalRecords > 100000) {
+            $recommendations[] = [
+                'type' => 'warning',
+                'message' => '検索履歴が10万件を超えています。定期的なクリーンアップを推奨します。',
+                'action' => 'cleanup_immediate'
+            ];
+        } elseif ($totalRecords > 50000) {
+            $recommendations[] = [
+                'type' => 'info',
+                'message' => '検索履歴が5万件を超えています。クリーンアップの準備を検討してください。',
+                'action' => 'cleanup_plan'
+            ];
+        }
+        
+        // 月間レコード数に基づく推奨事項
+        if ($recordsLastMonth > 10000) {
+            $recommendations[] = [
+                'type' => 'info',
+                'message' => '月間検索数が多いため、データ保持期間を短縮することを検討してください。',
+                'action' => 'reduce_retention'
+            ];
+        }
+        
+        // 古いデータの推奨事項
+        if (isset($stats['oldest_record'])) {
+            $oldestDate = new DateTime($stats['oldest_record']);
+            $daysOld = $oldestDate->diff(new DateTime())->days;
+            
+            if ($daysOld > 180) {
+                $recommendations[] = [
+                    'type' => 'warning',
+                    'message' => "最も古いデータが{$daysOld}日前のものです。アーカイブまたは削除を検討してください。",
+                    'action' => 'archive_old_data'
+                ];
+            }
+        }
+        
+        return $recommendations;
     }
 }
