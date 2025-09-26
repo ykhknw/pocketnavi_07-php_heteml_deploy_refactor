@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // 必要なファイルを読み込み
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../src/Services/SearchLogService.php';
+require_once __DIR__ . '/../src/Services/PopularSearchCache.php';
 
 try {
     // パラメータの取得
@@ -26,9 +26,9 @@ try {
     if ($page < 1) $page = 1;
     if ($limit < 1 || $limit > 100) $limit = 20;
     
-    // 検索ログサービスを使用してデータを取得
-    $searchLogService = new SearchLogService();
-    $result = $searchLogService->getPopularSearchesForModal($page, $limit, $searchQuery, $searchType);
+    // キャッシュサービスを使用してデータを取得
+    $cacheService = new PopularSearchCache();
+    $result = $cacheService->getPopularSearches($page, $limit, $searchQuery, $searchType);
     
     // デバッグ情報をログに記録
     error_log("Popular searches API - searchType: '$searchType', searchQuery: '$searchQuery', result count: " . count($result['searches']));
