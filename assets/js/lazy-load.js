@@ -11,26 +11,47 @@
     
     // Lazy load images
     function lazyLoadImages() {
-        const images = document.querySelectorAll('img[data-src]');
+        // 既存のdata-src属性を持つ画像
+        const dataSrcImages = document.querySelectorAll('img[data-src]');
+        
+        // loading="lazy"属性を持つ画像
+        const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+        
+        // すべての画像を対象にする
+        const allImages = [...dataSrcImages, ...lazyImages];
         
         if ('IntersectionObserver' in window) {
             const imageObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
-                        img.src = img.dataset.src;
+                        
+                        // data-src属性がある場合はsrcに移動
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                        }
+                        
+                        // ローディング状態の管理
                         img.classList.remove('lazy');
                         img.classList.add('loaded');
+                        
+                        // エラーハンドリング
+                        img.addEventListener('error', function() {
+                            this.style.display = 'none';
+                        });
+                        
                         observer.unobserve(img);
                     }
                 });
             }, observerOptions);
             
-            images.forEach(img => imageObserver.observe(img));
+            allImages.forEach(img => imageObserver.observe(img));
         } else {
             // Fallback for older browsers
-            images.forEach(img => {
-                img.src = img.dataset.src;
+            allImages.forEach(img => {
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                }
                 img.classList.remove('lazy');
                 img.classList.add('loaded');
             });

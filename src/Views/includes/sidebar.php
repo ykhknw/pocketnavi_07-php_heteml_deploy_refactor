@@ -57,9 +57,17 @@
                     
                     <!-- スクリーンショット画像 -->
                     <div class="position-relative">
+                        <?php 
+                        // Alt属性の生成（建築家名 + ウェブサイト名）
+                        $altText = $architectInfo['name_ja'] ?? $architectInfo['name_en'] ?? '';
+                        if (!empty($architectInfo['website_title'])) {
+                            $altText .= ' - ' . $architectInfo['website_title'];
+                        }
+                        ?>
                         <img src="/screen_shots_3_webp/shot_<?php echo $architectInfo['individual_architect_id'] ?? ''; ?>.webp" 
-                             alt="<?php echo htmlspecialchars($architectInfo['website_title'] ?? $architectInfo['name_ja'] ?? ''); ?>"
+                             alt="<?php echo htmlspecialchars($altText); ?>"
                              class="img-fluid w-100"
+                             loading="lazy"
                              style="height: 200px; object-fit: cover; transition: all 0.3s ease;"
                              onerror="this.style.display='none'">
                         

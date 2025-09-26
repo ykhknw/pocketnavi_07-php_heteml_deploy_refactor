@@ -24,15 +24,30 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
         <!-- Image Column -->
         <div class="col-md-3">
             <?php if (!empty($building['thumbnailUrl'])): ?>
+                <?php 
+                // Alt属性の生成（建築物名 + 建築家名 + 場所）
+                $altText = $building['title'];
+                if (!empty($building['architects']) && count($building['architects']) > 0) {
+                    $architectNames = array_map(function($architect) use ($lang) {
+                        return $lang === 'ja' ? $architect['architectJa'] : $architect['architectEn'];
+                    }, $building['architects']);
+                    $altText .= ' - ' . implode(', ', $architectNames);
+                }
+                if (!empty($building['location'])) {
+                    $altText .= ' - ' . ($lang === 'ja' ? $building['location'] : $building['locationEn']);
+                }
+                ?>
                 <img src="<?php echo htmlspecialchars($building['thumbnailUrl']); ?>" 
                      class="img-fluid rounded-start h-100" 
-                     alt="<?php echo htmlspecialchars($building['title']); ?>"
+                     alt="<?php echo htmlspecialchars($altText); ?>"
+                     loading="lazy"
                      style="height: 150px; object-fit: cover; width: 100%;">
             <?php else: ?>
                 <div class="bg-light d-flex align-items-center justify-content-center rounded-start" 
                      style="height: 150px;">
                     <img src="/assets/images/landmark.svg" 
-                         alt="PocketNavi" 
+                         alt="<?php echo $lang === 'ja' ? '建築物画像なし' : 'No building image'; ?>" 
+                         loading="lazy"
                          style="width: 60px; height: 60px; opacity: 0.3;">
                 </div>
             <?php endif; ?>
