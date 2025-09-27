@@ -120,16 +120,6 @@ return array (
       'limit' => 10,
       'totalPages' => 0.0,
     ),
-    'ce066f032c9f17ae3403fbad4989489a' => 
-    array (
-      'searches' => 
-      array (
-      ),
-      'total' => 0,
-      'page' => 1,
-      'limit' => 10,
-      'totalPages' => 0.0,
-    ),
   ),
   'timestamp' => 1758852353,
 );

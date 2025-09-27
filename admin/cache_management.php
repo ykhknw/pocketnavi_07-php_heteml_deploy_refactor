@@ -137,9 +137,9 @@ $status = $cacheService->getCacheStatus();
                         30分</p>
                         
                         <p><strong>更新方法:</strong><br>
-                        - 自動更新（アクセス時）<br>
                         - 手動更新（この画面）<br>
-                        - 定期更新（cron）</p>
+                        - 定期更新（cron）<br>
+                        <small class="text-muted">※自動更新（アクセス時）は無効化されています</small></p>
                         
                         <hr>
                         

@@ -1,3 +1,4 @@
+#!/usr/local/php/8.3/bin/php
 <?php
 /**
  * 人気検索キャッシュ更新スクリプト
@@ -40,7 +41,7 @@ try {
     foreach ($searchTypes as $searchType) {
         writeLog("検索タイプ '{$searchType}' のキャッシュを更新中");
         
-        $result = $cacheService->getPopularSearches(1, 20, '', $searchType);
+        $result = $cacheService->getPopularSearches(1, 50, '', $searchType);
         
         if (isset($result['searches']) && count($result['searches']) > 0) {
             writeLog("  - " . count($result['searches']) . " 件のデータを取得しました");

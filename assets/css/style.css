@@ -316,12 +316,96 @@ ul.pagination li.page-item.active span.page-link.active-page {
 /* サイドバー */
 .sticky-top {
     z-index: 1020;
+    max-height: calc(100vh - 40px); /* ビューポートの高さから余白を引く */
+    overflow-y: auto; /* 縦スクロールを有効化 */
+    overflow-x: hidden; /* 横スクロールは無効化 */
+}
+
+/* サイドバーコンテナの追加スタイル */
+.sidebar-container {
+    /* スクロールバーのスタイリング */
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.sidebar-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 /* サイドバー内の地図コンテナ */
 .sticky-top .card {
     position: relative;
     z-index: 1;
+}
+
+/* 小さい画面でのサイドバー最適化 */
+@media (max-height: 800px) {
+    .sticky-top {
+        max-height: calc(100vh - 20px);
+    }
+    
+    /* 地図の高さを調整 */
+    .sticky-top #map {
+        height: 300px !important;
+    }
+}
+
+@media (max-height: 600px) {
+    .sticky-top {
+        max-height: calc(100vh - 10px);
+    }
+    
+    /* 地図の高さをさらに縮小 */
+    .sticky-top #map {
+        height: 250px !important;
+    }
+    
+    /* カードの余白を縮小 */
+    .sticky-top .card {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .sticky-top .card-body {
+        padding: 0.75rem !important;
+    }
+}
+
+@media (max-height: 500px) {
+    .sticky-top {
+        max-height: calc(100vh - 5px);
+    }
+    
+    /* 地図の高さを最小限に */
+    .sticky-top #map {
+        height: 200px !important;
+    }
+    
+    /* カードの余白を最小限に */
+    .sticky-top .card {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .sticky-top .card-body {
+        padding: 0.5rem !important;
+    }
+    
+    .sticky-top .card-header {
+        padding: 0.5rem !important;
+    }
 }
 
 /* リストグループ */
@@ -351,6 +435,32 @@ footer {
     
     .sticky-top {
         position: static !important;
+        max-height: none !important; /* モバイルでは高さ制限を解除 */
+        overflow-y: visible !important; /* モバイルではスクロールを無効化 */
+    }
+    
+    /* モバイルでのサイドバー最適化 */
+    .sidebar-container {
+        padding: 0.5rem;
+    }
+    
+    .sidebar-container .card {
+        margin-bottom: 1rem;
+    }
+    
+    .sidebar-container #map {
+        height: 300px !important;
+    }
+}
+
+/* タブレット向けの調整 */
+@media (max-width: 992px) and (min-width: 769px) {
+    .sticky-top {
+        max-height: calc(100vh - 30px);
+    }
+    
+    .sticky-top #map {
+        height: 350px !important;
     }
 }
 
@@ -559,29 +669,5 @@ body .container-fluid .pagination .page-item.active span.page-link {
     transform: scale(1.05) !important;
 }
 
-/* 遅延読み込み用のスタイル */
-img[loading="lazy"] {
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-img[loading="lazy"].loaded {
-    opacity: 1;
-}
-
-/* 遅延読み込み中のプレースホルダー */
-.lazy-placeholder {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-    0% {
-        background-position: 200% 0;
-    }
-    100% {
-        background-position: -200% 0;
-    }
-}
+/* 遅延読み込み用のスタイルは削除 - ブラウザの自動最適化に任せる */
 

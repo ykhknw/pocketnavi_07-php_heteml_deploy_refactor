@@ -9,16 +9,14 @@
         threshold: 0.1
     };
     
-    // Lazy load images
+    // Lazy load images (simplified - only for data-src attributes)
     function lazyLoadImages() {
-        // 既存のdata-src属性を持つ画像
+        // 既存のdata-src属性を持つ画像のみを対象にする
         const dataSrcImages = document.querySelectorAll('img[data-src]');
         
-        // loading="lazy"属性を持つ画像
-        const lazyImages = document.querySelectorAll('img[loading="lazy"]');
-        
-        // すべての画像を対象にする
-        const allImages = [...dataSrcImages, ...lazyImages];
+        if (dataSrcImages.length === 0) {
+            return; // 対象画像がない場合は何もしない
+        }
         
         if ('IntersectionObserver' in window) {
             const imageObserver = new IntersectionObserver((entries, observer) => {
@@ -26,34 +24,23 @@
                     if (entry.isIntersecting) {
                         const img = entry.target;
                         
-                        // data-src属性がある場合はsrcに移動
+                        // data-src属性をsrcに移動
                         if (img.dataset.src) {
                             img.src = img.dataset.src;
                         }
-                        
-                        // ローディング状態の管理
-                        img.classList.remove('lazy');
-                        img.classList.add('loaded');
-                        
-                        // エラーハンドリング
-                        img.addEventListener('error', function() {
-                            this.style.display = 'none';
-                        });
                         
                         observer.unobserve(img);
                     }
                 });
             }, observerOptions);
             
-            allImages.forEach(img => imageObserver.observe(img));
+            dataSrcImages.forEach(img => imageObserver.observe(img));
         } else {
             // Fallback for older browsers
-            allImages.forEach(img => {
+            dataSrcImages.forEach(img => {
                 if (img.dataset.src) {
                     img.src = img.dataset.src;
                 }
-                img.classList.remove('lazy');
-                img.classList.add('loaded');
             });
         }
     }

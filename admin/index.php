@@ -309,6 +309,17 @@ try {
                     <p class="text-muted mb-0">システムログの確認と管理。</p>
                 </a>
             </div>
+            
+            <!-- キャッシュ管理 -->
+            <div class="col-lg-4 col-md-6">
+                <a href="cache_management.php" class="feature-card d-block">
+                    <div class="feature-icon">
+                        <i data-lucide="database" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <h5>キャッシュ管理</h5>
+                    <p class="text-muted mb-0">人気検索キャッシュの状態確認と管理。</p>
+                </a>
+            </div>
         </div>
         
         <!-- 最近のアクティビティ -->

@@ -10,6 +10,9 @@ class PopularSearchCache {
     private const CACHE_DURATION = 1800; // 30分
     private const MAX_LOCK_WAIT = 10; // 最大ロック待機時間（秒）
     
+    // CRON設定により定期更新が行われるため、アクセス時の自動更新を無効化
+    private const AUTO_UPDATE_ENABLED = false;
+    
     private $searchLogService;
     
     public function __construct() {
@@ -29,6 +32,11 @@ class PopularSearchCache {
             if ($cachedData !== false) {
                 return $cachedData;
             }
+        }
+        
+        // 自動更新が無効化されている場合はフォールバックデータを返す
+        if (!self::AUTO_UPDATE_ENABLED) {
+            return $this->getFallbackData($searchType);
         }
         
         // キャッシュが無効または存在しない場合は更新

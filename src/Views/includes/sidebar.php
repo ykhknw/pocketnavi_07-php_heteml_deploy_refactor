@@ -1,5 +1,5 @@
 <!-- Sidebar -->
-<div class="sticky-top" style="top: 20px;">
+<div class="sticky-top sidebar-container" style="top: 20px;">
     <!-- Map -->
     <div class="card mb-4">
         <div class="card-body p-0">
@@ -67,7 +67,6 @@
                         <img src="/screen_shots_3_webp/shot_<?php echo $architectInfo['individual_architect_id'] ?? ''; ?>.webp" 
                              alt="<?php echo htmlspecialchars($altText); ?>"
                              class="img-fluid w-100"
-                             loading="lazy"
                              style="height: 200px; object-fit: cover; transition: all 0.3s ease;"
                              onerror="this.style.display='none'">
                         

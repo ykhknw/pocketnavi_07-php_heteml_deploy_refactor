@@ -1,3 +1,4 @@
+#!/usr/local/php/8.3/bin/php
 <?php
 /**
  * HETEML環境用検索履歴クリーンアップスクリプト
