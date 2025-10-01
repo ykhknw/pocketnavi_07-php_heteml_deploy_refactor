@@ -100,7 +100,7 @@ class SEOHelper {
         // 建築物ページの画像選択
         if (!empty($building['has_photo']) && str_ends_with($building['has_photo'], '.webp')) {
             // has_photoが.webpで終わる場合は、撮影者所有の画像を使用可能
-            $imageUrl = $baseUrl . "/screen_shots_3_webp/{$building['has_photo']}";
+            $imageUrl = $baseUrl . "/pictures/{$building['uid']}/{$building['has_photo']}";
         } else {
             // has_photoがNULLまたは.webpで終わらない場合はデフォルト画像を使用
             $imageUrl = $baseUrl . '/assets/images/default-building.jpg';
@@ -391,7 +391,7 @@ class SEOHelper {
         
         // 画像URLの決定
         if (!empty($building['has_photo']) && str_ends_with($building['has_photo'], '.webp')) {
-            $imageUrl = $baseUrl . "/screen_shots_3_webp/{$building['has_photo']}";
+            $imageUrl = $baseUrl . "/pictures/{$building['uid']}/{$building['has_photo']}";
         } else {
             $imageUrl = $baseUrl . '/assets/images/default-building.jpg';
         }
