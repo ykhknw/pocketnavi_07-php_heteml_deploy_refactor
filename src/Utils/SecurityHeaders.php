@@ -36,7 +36,7 @@ class SecurityHeaders {
         header('Referrer-Policy: strict-origin-when-cross-origin');
         
         // Permissions Policy
-        header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        header('Permissions-Policy: geolocation=(self), microphone=(), camera=()');
     }
     
     /**
@@ -86,6 +86,9 @@ class SecurityHeaders {
         // COEPを無効化してOpenStreetMapタイルの読み込みを許可
         // header('Cross-Origin-Embedder-Policy: require-corp');
         header('Cross-Origin-Resource-Policy: cross-origin');
+        
+        // 開発環境用のPermissions Policy（位置情報を許可）
+        header('Permissions-Policy: geolocation=(self), microphone=(), camera=()');
         
         // デバッグ情報を表示（開発環境のみ）
         if (defined('DEBUG') && DEBUG) {
