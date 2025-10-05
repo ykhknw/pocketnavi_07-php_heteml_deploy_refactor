@@ -236,9 +236,278 @@ function openVideo(url) {
     window.open(url, '_blank');
 }
 
-// 写真を開く
-function openPhoto(url) {
-    window.open(url, '_blank');
+// 写真を開く（カルーセル表示）
+// 古い関数を完全に削除
+delete window.openPhoto;
+
+// 新しい関数を定義
+window.openPhoto = function(uid) {
+    
+    // ローディング表示
+    showPhotoCarouselLoading();
+    
+    // APIから写真リストを取得
+    // 現在のパスからルートディレクトリを取得
+    let basePath = window.location.pathname;
+    
+    // 建築物詳細ページの場合（/buildings/slug）はルートに戻る
+    if (basePath.includes('/buildings/')) {
+        basePath = '/';
+    } else if (basePath === '/' || basePath === '/index.php') {
+        // ルートページの場合はそのまま
+        basePath = '/';
+    } else {
+        // その他の場合は現在のディレクトリを使用
+        basePath = basePath.replace(/\/[^\/]*$/, '');
+        if (basePath === '') basePath = '/';
+    }
+    
+    // パスの最後にスラッシュがない場合は追加
+    if (!basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    const apiUrl = `${window.location.origin}${basePath}api/get-photos.php?uid=${encodeURIComponent(uid)}`;
+    console.log('openPhoto API URL:', apiUrl);
+    
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.photos && data.photos.length > 0) {
+                showPhotoCarousel(data.photos, uid);
+            } else {
+                showPhotoError(`写真が見つかりませんでした。${data.error ? ' (' + data.error + ')' : ''}`);
+            }
+        })
+        .catch(error => {
+            showPhotoError(`写真の読み込みに失敗しました。エラー: ${error.message}`);
+        });
+}
+
+// 写真カルーセルのローディング表示
+function showPhotoCarouselLoading() {
+    const modal = document.getElementById('photoCarouselModal');
+    const carouselInner = document.getElementById('carouselInner');
+    const carouselIndicators = document.getElementById('carouselIndicators');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    // ローディング状態を設定
+    carouselInner.innerHTML = `
+        <div class="carousel-item active">
+            <div class="d-flex align-items-center justify-content-center" style="height: 70vh; background-color: #000;">
+                <div class="text-center text-white">
+                    <div class="spinner-border mb-3" role="status">
+                        <span class="visually-hidden">読み込み中...</span>
+                    </div>
+                    <p>写真を読み込み中...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    carouselIndicators.innerHTML = '';
+    photoCounter.textContent = '読み込み中...';
+    
+    // モーダルを表示
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// 写真カルーセルを表示
+function showPhotoCarousel(photos, uid) {
+    const modal = document.getElementById('photoCarouselModal');
+    const carouselInner = document.getElementById('carouselInner');
+    const carouselIndicators = document.getElementById('carouselIndicators');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    // カルーセルアイテムを生成
+    carouselInner.innerHTML = '';
+    carouselIndicators.innerHTML = '';
+    
+    photos.forEach((photo, index) => {
+        // カルーセルアイテム
+        const carouselItem = document.createElement('div');
+        carouselItem.className = `carousel-item ${index === 0 ? 'active' : ''}`;
+        carouselItem.innerHTML = `
+            <img src="${photo}" class="d-block w-100" alt="Photo ${index + 1}" loading="lazy">
+        `;
+        carouselInner.appendChild(carouselItem);
+        
+        // インジケーター
+        const indicator = document.createElement('button');
+        indicator.type = 'button';
+        indicator.setAttribute('data-bs-target', '#photoCarousel');
+        indicator.setAttribute('data-bs-slide-to', index);
+        indicator.className = index === 0 ? 'active' : '';
+        indicator.setAttribute('aria-label', `Slide ${index + 1}`);
+        carouselIndicators.appendChild(indicator);
+    });
+    
+    // カウンターを更新
+    photoCounter.textContent = `1 / ${photos.length}`;
+    
+    // カルーセルイベントリスナーを設定
+    const carousel = document.getElementById('photoCarousel');
+    carousel.addEventListener('slid.bs.carousel', function(event) {
+        const activeIndex = event.to;
+        photoCounter.textContent = `${activeIndex + 1} / ${photos.length}`;
+    });
+    
+    // イベント設定
+    setupPhotoCarouselEvents(photos);
+    
+    // モーダルを表示
+    const bsModal = new bootstrap.Modal(modal);
+    
+    // モーダルが閉じられた時のイベントリスナーを追加
+    modal.addEventListener('hidden.bs.modal', function() {
+        // バックドロップを手動で削除
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        
+        // bodyのクラスをリセット
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+    
+    bsModal.show();
+};
+
+// DOMContentLoadedでも関数を再定義（本番環境での確実性のため）
+document.addEventListener('DOMContentLoaded', function() {
+    // 古い関数を削除
+    delete window.openPhoto;
+    
+    // 新しい関数を定義
+    window.openPhoto = function(uid) {
+        
+        // ローディング表示
+        showPhotoCarouselLoading();
+        
+        // APIから写真リストを取得
+        // 現在のパスからルートディレクトリを取得
+        let basePath = window.location.pathname;
+        
+        // 建築物詳細ページの場合（/buildings/slug）はルートに戻る
+        if (basePath.includes('/buildings/')) {
+            basePath = '/';
+        } else if (basePath === '/' || basePath === '/index.php') {
+            // ルートページの場合はそのまま
+            basePath = '/';
+        } else {
+            // その他の場合は現在のディレクトリを使用
+            basePath = basePath.replace(/\/[^\/]*$/, '');
+            if (basePath === '') basePath = '/';
+        }
+        
+        // パスの最後にスラッシュがない場合は追加
+        if (!basePath.endsWith('/')) {
+            basePath += '/';
+        }
+        
+        const apiUrl = `${window.location.origin}${basePath}api/get-photos.php?uid=${encodeURIComponent(uid)}`;
+        console.log('openPhoto API URL:', apiUrl);
+        
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.photos && data.photos.length > 0) {
+                    showPhotoCarousel(data.photos, uid);
+                } else {
+                    showPhotoError(`写真が見つかりませんでした。${data.error ? ' (' + data.error + ')' : ''}`);
+                }
+            })
+            .catch(error => {
+                showPhotoError(`写真の読み込みに失敗しました。エラー: ${error.message}`);
+            });
+    };
+});
+
+// 写真エラー表示
+function showPhotoError(message) {
+    const modal = document.getElementById('photoCarouselModal');
+    const carouselInner = document.getElementById('carouselInner');
+    const carouselIndicators = document.getElementById('carouselIndicators');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    carouselInner.innerHTML = `
+        <div class="carousel-item active">
+            <div class="d-flex align-items-center justify-content-center" style="height: 70vh; background-color: #000;">
+                <div class="text-center text-white">
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px;" class="mb-3"></i>
+                    <p>${message}</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    carouselIndicators.innerHTML = '';
+    photoCounter.textContent = 'エラー';
+    
+    // モーダルを表示
+    const bsModal = new bootstrap.Modal(modal);
+    
+    // モーダルが閉じられた時のイベントリスナーを追加
+    modal.addEventListener('hidden.bs.modal', function() {
+        // バックドロップを手動で削除
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        
+        // bodyのクラスをリセット
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+    
+    bsModal.show();
+}
+
+// 写真カルーセルのイベント設定
+function setupPhotoCarouselEvents(photos) {
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    
+    // 全画面ボタン
+    fullscreenBtn.onclick = function() {
+        const activeItem = document.querySelector('#photoCarousel .carousel-item.active');
+        if (activeItem) {
+            const img = activeItem.querySelector('img');
+            if (img) {
+                showFullscreenImage(img.src);
+            }
+        }
+    };
+}
+
+// 全画面画像表示
+function showFullscreenImage(src) {
+    const overlay = document.getElementById('fullscreenOverlay');
+    const fullscreenImg = document.getElementById('fullscreenImage');
+    
+    fullscreenImg.src = src;
+    overlay.style.display = 'flex';
+    
+    // 閉じるボタン
+    document.getElementById('closeFullscreen').onclick = function() {
+        overlay.style.display = 'none';
+    };
+    
+    // ESCキーで閉じる
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.style.display === 'flex') {
+            overlay.style.display = 'none';
+        }
+    });
 }
 
 // 付近を検索
@@ -381,4 +650,63 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// 写真ギャラリーの初期化
+function initializePhotoGallery() {
+    console.log('Initializing photo gallery...');
+    
+    // 建築物詳細ページで写真ギャラリーカードが存在する場合
+    const galleryCard = document.getElementById('photoGalleryCard');
+    if (!galleryCard) {
+        console.log('Photo gallery card not found');
+        return;
+    }
+    
+    // 現在の建築物のUIDを取得
+    const buildingCard = document.querySelector('.building-card');
+    if (!buildingCard) {
+        console.log('Building card not found');
+        return;
+    }
+    
+    const uid = buildingCard.getAttribute('data-uid');
+    console.log('Building UID:', uid);
+    
+    if (!uid) {
+        console.log('No UID found');
+        return;
+    }
+    
+    // 写真データを取得
+    console.log('Fetching photos for UID:', uid);
+    fetch(`/api/get-photos.php?uid=${encodeURIComponent(uid)}`)
+        .then(response => {
+            console.log('API response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('API response data:', data);
+            if (data.success && data.photos && data.photos.length > 0) {
+                console.log('Photos found:', data.photos.length);
+                // 写真ギャラリーマネージャーに写真を設定
+                if (window.photoGalleryManager) {
+                    window.photoGalleryManager.setPhotos(data.photos);
+                }
+            } else {
+                console.log('No photos found, hiding gallery');
+                // 写真がない場合はギャラリーを非表示
+                galleryCard.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading photos:', error);
+            galleryCard.style.display = 'none';
+        });
+}
+
+// ページ読み込み完了後に写真ギャラリーを初期化
+document.addEventListener('DOMContentLoaded', function() {
+    // 少し遅延させて他の初期化処理が完了してから実行
+    setTimeout(initializePhotoGallery, 500);
+});
 

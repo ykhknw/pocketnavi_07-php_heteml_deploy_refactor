@@ -12,6 +12,7 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
 <!-- Building Card - Horizontal Layout -->
 <div class="card mb-3 building-card" 
      data-building-id="<?php echo htmlspecialchars($building['building_id'] ?? ''); ?>"
+     data-uid="<?php echo htmlspecialchars($building['uid'] ?? ''); ?>"
      data-lat="<?php echo htmlspecialchars($building['lat'] ?? ''); ?>"
      data-lng="<?php echo htmlspecialchars($building['lng'] ?? ''); ?>"
      data-title="<?php echo htmlspecialchars($building['title'] ?? ''); ?>"
@@ -352,10 +353,10 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
             </small>
             
             <div class="btn-group btn-group-sm">
-                <?php if (!empty($building['thumbnailUrl'])): ?>
+                <?php if (!empty($building['uid'])): ?>
                     <button type="button" 
                             class="btn btn-outline-success btn-sm"
-                            onclick="openPhoto('<?php echo htmlspecialchars($building['thumbnailUrl']); ?>')"
+                            onclick="openPhoto('<?php echo htmlspecialchars($building['uid']); ?>')"
                             title="<?php echo $lang === 'ja' ? '写真を見る' : 'View Photos'; ?>">
                         <i data-lucide="image" style="width: 16px; height: 16px;"></i>
                     </button>
@@ -380,4 +381,9 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
         </div>
     </div>
 </div>
+
+<!-- 写真ギャラリーカード（建築物詳細ページでのみ表示） -->
+<?php if (isset($buildingSlug) && !empty($buildingSlug) && !empty($building['has_photo']) && $building['has_photo'] != '0' && !empty($building['uid'])): ?>
+    <?php include 'src/Views/includes/photo_gallery_card.php'; ?>
+<?php endif; ?>
 

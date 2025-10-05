@@ -215,5 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             initLanguageSwitch();
         });
     </script>
+    
+    <!-- Photo Carousel Modal -->
+    <?php include 'src/Views/includes/photo_carousel_modal.php'; ?>
 </body>
 </html>
