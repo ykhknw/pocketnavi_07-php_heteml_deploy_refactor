@@ -59,7 +59,7 @@
 /* 写真ギャラリーカード用スタイル */
 #photoGalleryCard .carousel-item img {
     width: 100%;
-    height: 400px; /* PC: 300px → 400px */
+    height: 500px; /* PC: 400px → 500px */
     object-fit: contain; /* cover → contain で縦横比を維持しつつ全体を表示 */
     background-color: #f8f9fa;
 }
@@ -101,14 +101,14 @@
 /* タブレット対応 (768px - 1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
     #photoGalleryCard .carousel-item img {
-        height: 350px; /* タブレット: 350px */
+        height: 420px; /* タブレット: 350px → 420px */
     }
 }
 
 /* スマホ対応 (768px以下) */
 @media (max-width: 768px) {
     #photoGalleryCard .carousel-item img {
-        height: 250px; /* スマホ: 250px */
+        height: 320px; /* スマホ: 250px → 320px */
     }
     
     #photoGalleryCard .carousel-control-prev,
@@ -120,14 +120,14 @@
 /* 小さいスマホ対応 (480px以下) */
 @media (max-width: 480px) {
     #photoGalleryCard .carousel-item img {
-        height: 200px; /* 小さいスマホ: 200px */
+        height: 250px; /* 小さいスマホ: 200px → 250px */
     }
 }
 
 /* 大きなデスクトップ対応 (1200px以上) */
 @media (min-width: 1200px) {
     #photoGalleryCard .carousel-item img {
-        height: 450px; /* 大きなPC: 450px */
+        height: 550px; /* 大きなPC: 450px → 550px */
     }
 }
 </style>
@@ -198,24 +198,12 @@ class PhotoGalleryManager {
         const prevButton = document.querySelector('#photoGalleryCarousel .carousel-control-prev');
         const nextButton = document.querySelector('#photoGalleryCarousel .carousel-control-next');
         
-        console.log('Photo count:', this.photos.length);
-        console.log('Prev button found:', !!prevButton);
-        console.log('Next button found:', !!nextButton);
-        
         if (this.photos.length <= 1) {
-            console.log('Hiding arrows (single photo)');
             if (prevButton) prevButton.style.display = 'none';
             if (nextButton) nextButton.style.display = 'none';
         } else {
-            console.log('Showing arrows (multiple photos)');
-            if (prevButton) {
-                prevButton.style.display = 'block';
-                console.log('Prev button display set to block');
-            }
-            if (nextButton) {
-                nextButton.style.display = 'block';
-                console.log('Next button display set to block');
-            }
+            if (prevButton) prevButton.style.display = 'block';
+            if (nextButton) nextButton.style.display = 'block';
         }
         
         // カルーセルアイテムを生成
@@ -291,11 +279,11 @@ class PhotoGalleryManager {
     getMaxHeightForDevice() {
         const width = window.innerWidth;
         
-        if (width >= 1200) return 450; // 大きなPC
-        if (width >= 1025) return 400; // PC
-        if (width >= 769) return 350;  // タブレット
-        if (width >= 481) return 250;  // スマホ
-        return 200; // 小さいスマホ
+        if (width >= 1200) return 550; // 大きなPC
+        if (width >= 1025) return 500; // PC
+        if (width >= 769) return 420;  // タブレット
+        if (width >= 481) return 320;  // スマホ
+        return 250; // 小さいスマホ
     }
     
     // カウンターを更新
