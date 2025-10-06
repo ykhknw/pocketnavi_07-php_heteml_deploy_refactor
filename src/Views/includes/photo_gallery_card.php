@@ -130,6 +130,20 @@
         height: 550px; /* 大きなPC: 450px → 550px */
     }
 }
+
+/* Youtube再生ボタンスタイル */
+.youtube-play-button {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.youtube-play-button:hover {
+    transform: scale(1.1);
+    opacity: 0.9;
+}
+
+.youtube-play-button svg {
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
 </style>
 
 <script>
@@ -143,9 +157,10 @@ class PhotoGalleryManager {
     }
     
     // 写真データを設定
-    setPhotos(photos) {
+    setPhotos(photos, youtubeUrl = null) {
         this.photos = photos;
-        if (photos.length > 0) {
+        this.youtubeUrl = youtubeUrl;
+        if (photos.length > 0 || youtubeUrl) {
             this.showGallery();
             this.initializeCarousel();
         } else {
@@ -179,10 +194,11 @@ class PhotoGalleryManager {
         
         if (!indicatorsContainer || !innerContainer || !counter) return;
         
-        // インジケーターを生成（写真が2枚以上の場合のみ）
+        // インジケーターを生成（写真+動画が2つ以上の場合のみ）
         indicatorsContainer.innerHTML = '';
-        if (this.photos.length > 1) {
-            for (let i = 0; i < this.photos.length; i++) {
+        const totalItems = this.photos.length + (this.youtubeUrl ? 1 : 0);
+        if (totalItems > 1) {
+            for (let i = 0; i < totalItems; i++) {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.setAttribute('data-bs-target', '#photoGalleryCarousel');
@@ -194,11 +210,11 @@ class PhotoGalleryManager {
             }
         }
         
-        // 矢印の表示制御（写真が2枚以上の場合のみ表示）
+        // 矢印の表示制御（写真+動画が2つ以上の場合のみ表示）
         const prevButton = document.querySelector('#photoGalleryCarousel .carousel-control-prev');
         const nextButton = document.querySelector('#photoGalleryCarousel .carousel-control-next');
         
-        if (this.photos.length <= 1) {
+        if (totalItems <= 1) {
             if (prevButton) prevButton.style.display = 'none';
             if (nextButton) nextButton.style.display = 'none';
         } else {
@@ -208,6 +224,8 @@ class PhotoGalleryManager {
         
         // カルーセルアイテムを生成
         innerContainer.innerHTML = '';
+        
+        // 写真アイテムを生成
         this.photos.forEach((photo, index) => {
             const item = document.createElement('div');
             item.className = `carousel-item ${index === 0 ? 'active' : ''}`;
@@ -226,6 +244,67 @@ class PhotoGalleryManager {
             item.appendChild(img);
             innerContainer.appendChild(item);
         });
+        
+        // 動画アイテムを生成（最後に追加）
+        if (this.youtubeUrl) {
+            const videoItem = document.createElement('div');
+            videoItem.className = 'carousel-item';
+            
+            const videoContainer = document.createElement('div');
+            videoContainer.className = 'video-container d-flex align-items-center justify-content-center';
+            videoContainer.style.cssText = 'height: 500px; background-color: #f8f9fa; cursor: pointer;';
+            
+            // 動画サムネイルを取得
+            const videoId = this.getVideoId(this.youtubeUrl);
+            if (videoId) {
+                const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                const img = document.createElement('img');
+                img.src = thumbnailUrl;
+                img.className = 'd-block w-100';
+                img.alt = 'Video thumbnail';
+                img.style.cssText = 'height: 500px; object-fit: contain;';
+                img.onerror = () => {
+                    // サムネイル取得失敗時のフォールバック
+                    videoContainer.innerHTML = `
+                        <div class="text-center">
+                            <i data-lucide="play-circle" style="width: 80px; height: 80px; color: #dc3545;"></i>
+                            <h5 class="mt-3">動画を再生</h5>
+                        </div>
+                    `;
+                };
+                videoContainer.appendChild(img);
+            } else {
+                // 動画IDが取得できない場合のフォールバック
+                videoContainer.innerHTML = `
+                    <div class="text-center">
+                        <i data-lucide="play-circle" style="width: 80px; height: 80px; color: #dc3545;"></i>
+                        <h5 class="mt-3">動画を再生</h5>
+                    </div>
+                `;
+            }
+            
+            // Youtube再生ボタンオーバーレイ
+            const playButton = document.createElement('div');
+            playButton.className = 'youtube-play-button position-absolute top-50 start-50 translate-middle';
+            playButton.innerHTML = `
+                <svg width="68" height="48" viewBox="0 0 68 48">
+                    <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"></path>
+                    <path d="M 45,24 27,14 27,34" fill="#fff"></path>
+                </svg>
+            `;
+            playButton.style.cssText = 'z-index: 5; cursor: pointer;';
+            
+            videoContainer.style.position = 'relative';
+            videoContainer.appendChild(playButton);
+            
+            // クリックイベント
+            videoContainer.addEventListener('click', () => {
+                window.open(this.youtubeUrl, '_blank');
+            });
+            
+            videoItem.appendChild(videoContainer);
+            innerContainer.appendChild(videoItem);
+        }
         
         // カウンターを更新
         this.updateCounter();
@@ -290,8 +369,30 @@ class PhotoGalleryManager {
     updateCounter() {
         const counter = document.getElementById('galleryCounter');
         if (counter) {
-            counter.textContent = `${this.currentIndex + 1} / ${this.photos.length}`;
+            const totalItems = this.photos.length + (this.youtubeUrl ? 1 : 0);
+            counter.textContent = `${this.currentIndex + 1} / ${totalItems}`;
         }
+    }
+    
+    // Youtube URLからvideoIdを取得
+    getVideoId(url) {
+        if (!url) return null;
+        
+        // 複数のYoutube URLパターンに対応
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,  // 通常の動画
+            /youtube\.com\/shorts\/([^&\n?#]+)/,  // Shorts
+            /youtube\.com\/live\/([^&\n?#]+)/,   // ライブ配信
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) {
+                return match[1];
+            }
+        }
+        
+        return null;
     }
     
     // モーダルを開く

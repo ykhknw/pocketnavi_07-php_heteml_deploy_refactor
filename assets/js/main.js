@@ -688,9 +688,11 @@ function initializePhotoGallery() {
             console.log('API response data:', data);
             if (data.success && data.photos && data.photos.length > 0) {
                 console.log('Photos found:', data.photos.length);
-                // 写真ギャラリーマネージャーに写真を設定
+                // 現在の建築物のyoutubeUrlを取得
+                const youtubeUrl = buildingCard.getAttribute('data-youtube-url') || null;
+                // 写真ギャラリーマネージャーに写真と動画URLを設定
                 if (window.photoGalleryManager) {
-                    window.photoGalleryManager.setPhotos(data.photos);
+                    window.photoGalleryManager.setPhotos(data.photos, youtubeUrl);
                 }
             } else {
                 console.log('No photos found, hiding gallery');

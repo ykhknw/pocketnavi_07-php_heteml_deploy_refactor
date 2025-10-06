@@ -20,6 +20,7 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
      data-location="<?php echo htmlspecialchars($building['location'] ?? ''); ?>"
      data-location-en="<?php echo htmlspecialchars($building['locationEn'] ?? ''); ?>"
      data-slug="<?php echo htmlspecialchars($building['slug'] ?? ''); ?>"
+     data-youtube-url="<?php echo htmlspecialchars($building['youtubeUrl'] ?? ''); ?>"
      data-popup-content="<?php echo htmlspecialchars(generatePopupContent($building, $lang ?? 'ja')); ?>">
     <div class="row g-0">
         <!-- Image Column -->
