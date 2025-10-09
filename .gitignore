@@ -11,5 +11,5 @@ Thumbs.db
 *.tmp
 *.cache
 
-# 機密情報
+# 機密情報 
 admin/update_youtube/client_secret.json
