@@ -1,215 +1,185 @@
-<?php
+﻿<?php
+
+require_once __DIR__ . '/ConfigManager.php';
 
 /**
- * 設定値検証クラス
+ * 設定検証システム
+ * アプリケーションの設定値の妥当性を検証
  */
 class ConfigValidator {
-    private static $rules = [
-        // アプリケーション設定
-        'app.name' => 'required|string|min:1|max:100',
-        'app.env' => 'required|string|in:local,development,staging,production',
-        'app.debug' => 'boolean',
-        'app.url' => 'required|url',
-        'app.timezone' => 'required|string|timezone',
-        'app.locale' => 'required|string|in:ja,en',
-        'app.fallback_locale' => 'required|string|in:ja,en',
-        
-        // データベース設定
-        'database.connections.mysql.host' => 'required|string|min:1',
-        'database.connections.mysql.port' => 'required|integer|min:1|max:65535',
-        'database.connections.mysql.database' => 'required|string|min:1',
-        'database.connections.mysql.username' => 'required|string|min:1',
-        'database.connections.mysql.password' => 'string',
-        'database.connections.mysql.charset' => 'required|string|in:utf8,utf8mb4',
-        
-        // ログ設定
-        'logging.default_level' => 'required|string|in:debug,info,warning,error,critical,DEBUG,INFO,WARNING,ERROR,CRITICAL',
-        
-        // セッション設定
-        'app.session.lifetime' => 'required|integer|min:1|max:1440',
-        'app.session.secure' => 'boolean',
-        'app.session.http_only' => 'boolean',
-        'app.session.same_site' => 'required|string|in:lax,strict,none',
-        
-        // パフォーマンス設定
-        'app.performance.max_execution_time' => 'required|integer|min:1|max:300',
-        'app.performance.memory_limit' => 'required|string|memory_limit',
-        'app.performance.upload_max_filesize' => 'required|string|file_size',
-        'app.performance.post_max_size' => 'required|string|file_size',
-    ];
+    
+    private static $rules = [];
+    private static $messages = [];
     
     /**
-     * 設定値を検証
+     * 検証ルールの初期化
      */
-    public static function validate($config) {
-        $errors = [];
+    public static function initialize() {
+        self::$rules = [
+            // アプリケーション設定の検証ルール
+            'app.name' => ['required', 'string', 'max:100'],
+            'app.env' => ['required', 'in:development,staging,production'],
+            'app.debug' => ['boolean'],
+            'app.url' => ['required', 'url'],
+            'app.timezone' => ['required', 'string'],
+            'app.locale' => ['required', 'in:ja,en'],
+            'app.fallback_locale' => ['required', 'in:ja,en'],
+            
+            // データベース設定の検証ルール
+            'database.host' => ['required', 'string'],
+            'database.name' => ['required', 'string'],
+            'database.username' => ['required', 'string'],
+            'database.password' => ['string'],
+        ];
         
-        foreach (self::$rules as $key => $rule) {
-            $value = self::getNestedValue($config, $key);
-            $errors = array_merge($errors, self::validateValue($key, $value, $rule));
-        }
-        
-        if (!empty($errors)) {
-            throw new InvalidConfigurationException('設定値の検証に失敗しました: ' . implode(', ', $errors));
-        }
-        
-        return true;
+        self::$messages = [
+            'required' => 'The :field field is required.',
+            'string' => 'The :field field must be a string.',
+            'integer' => 'The :field field must be an integer.',
+            'boolean' => 'The :field field must be a boolean.',
+            'email' => 'The :field field must be a valid email address.',
+            'url' => 'The :field field must be a valid URL.',
+            'in' => 'The :field field must be one of: :values.',
+            'max' => 'The :field field must not exceed :max characters.',
+            'min' => 'The :field field must be at least :min.',
+        ];
     }
     
     /**
-     * ネストされた配列から値を取得
+     * 設定の検証
+     */
+    public static function validate($config = null) {
+        if (!self::$rules) {
+            self::initialize();
+        }
+        
+        if ($config === null) {
+            $config = ConfigManager::all();
+        }
+        
+        $errors = [];
+        
+        foreach (self::$rules as $key => $rules) {
+            $value = self::getNestedValue($config, $key);
+            
+            foreach ($rules as $rule) {
+                $ruleParts = explode(':', $rule);
+                $ruleName = $ruleParts[0];
+                $ruleParams = isset($ruleParts[1]) ? explode(',', $ruleParts[1]) : [];
+                
+                if (!self::validateRule($value, $ruleName, $ruleParams)) {
+                    $errors[$key][] = self::getErrorMessage($key, $ruleName, $ruleParams);
+                }
+            }
+        }
+        
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors
+        ];
+    }
+    
+    /**
+     * ネストした配列から値を取得
      */
     private static function getNestedValue($array, $key) {
         $keys = explode('.', $key);
         $value = $array;
         
         foreach ($keys as $k) {
-            if (is_array($value) && array_key_exists($k, $value)) {
-                $value = $value[$k];
-            } else {
+            if (!isset($value[$k])) {
                 return null;
             }
+            $value = $value[$k];
         }
         
         return $value;
     }
     
     /**
-     * 値を検証
+     * 検証ルールの実行
      */
-    private static function validateValue($key, $value, $rule) {
-        $errors = [];
-        $rules = explode('|', $rule);
+    private static function validateRule($value, $rule, $params) {
+        switch ($rule) {
+            case 'required':
+                return !empty($value);
+                
+            case 'string':
+                return is_string($value);
+                
+            case 'integer':
+                return is_int($value) || (is_string($value) && ctype_digit($value));
+                
+            case 'boolean':
+                return is_bool($value) || in_array($value, ['true', 'false', '1', '0', 1, 0]);
+                
+            case 'email':
+                return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
+                
+            case 'url':
+                return filter_var($value, FILTER_VALIDATE_URL) !== false;
+                
+            case 'in':
+                return in_array($value, $params);
+                
+            case 'max':
+                return strlen($value) <= (int)$params[0];
+                
+            case 'min':
+                return strlen($value) >= (int)$params[0];
+                
+            default:
+                return true;
+        }
+    }
+    
+    /**
+     * エラーメッセージの取得
+     */
+    private static function getErrorMessage($field, $rule, $params) {
+        $message = self::$messages[$rule] ?? 'The :field field is invalid.';
         
-        foreach ($rules as $r) {
-            $error = self::applyRule($key, $value, $r);
-            if ($error) {
-                $errors[] = $error;
+        $message = str_replace(':field', $field, $message);
+        
+        if (isset($params[0])) {
+            if ($rule === 'in') {
+                $message = str_replace(':values', implode(', ', $params), $message);
+            } else {
+                $message = str_replace(':max', $params[0], $message);
+                $message = str_replace(':min', $params[0], $message);
             }
         }
         
-        return $errors;
+        return $message;
     }
     
     /**
-     * ルールを適用
+     * 設定の推奨事項チェック
      */
-    private static function applyRule($key, $value, $rule) {
-        if (strpos($rule, ':') !== false) {
-            list($ruleName, $ruleValue) = explode(':', $rule, 2);
-        } else {
-            $ruleName = $rule;
-            $ruleValue = null;
+    public static function getRecommendations() {
+        $recommendations = [];
+        
+        // 本番環境での推奨事項
+        if (ConfigManager::get('app.env') === 'production') {
+            if (ConfigManager::get('app.debug')) {
+                $recommendations[] = 'Debug mode should be disabled in production';
+            }
         }
         
-        switch ($ruleName) {
-            case 'required':
-                if ($value === null || $value === '') {
-                    return "{$key} は必須です";
-                }
-                break;
-                
-            case 'string':
-                if ($value !== null && !is_string($value)) {
-                    return "{$key} は文字列である必要があります";
-                }
-                break;
-                
-            case 'integer':
-                if ($value !== null && !is_int($value)) {
-                    return "{$key} は整数である必要があります";
-                }
-                break;
-                
-            case 'boolean':
-                if ($value !== null && !is_bool($value)) {
-                    return "{$key} は真偽値である必要があります";
-                }
-                break;
-                
-            case 'min':
-                if ($value !== null) {
-                    if (is_string($value) && strlen($value) < (int)$ruleValue) {
-                        return "{$key} は {$ruleValue} 文字以上である必要があります";
-                    } elseif (is_numeric($value) && $value < (int)$ruleValue) {
-                        return "{$key} は {$ruleValue} 以上である必要があります";
-                    }
-                }
-                break;
-                
-            case 'max':
-                if ($value !== null) {
-                    if (is_string($value) && strlen($value) > (int)$ruleValue) {
-                        return "{$key} は {$ruleValue} 文字以下である必要があります";
-                    } elseif (is_numeric($value) && $value > (int)$ruleValue) {
-                        return "{$key} は {$ruleValue} 以下である必要があります";
-                    }
-                }
-                break;
-                
-            case 'in':
-                if ($value !== null) {
-                    $allowedValues = explode(',', $ruleValue);
-                    if (!in_array($value, $allowedValues)) {
-                        return "{$key} は " . implode(', ', $allowedValues) . " のいずれかである必要があります";
-                    }
-                }
-                break;
-                
-            case 'url':
-                if ($value !== null && !filter_var($value, FILTER_VALIDATE_URL)) {
-                    return "{$key} は有効なURLである必要があります";
-                }
-                break;
-                
-            case 'timezone':
-                if ($value !== null && !in_array($value, timezone_identifiers_list())) {
-                    return "{$key} は有効なタイムゾーンである必要があります";
-                }
-                break;
-                
-            case 'memory_limit':
-                if ($value !== null && !self::isValidMemoryLimit($value)) {
-                    return "{$key} は有効なメモリ制限値である必要があります";
-                }
-                break;
-                
-            case 'file_size':
-                if ($value !== null && !self::isValidFileSize($value)) {
-                    return "{$key} は有効なファイルサイズ値である必要があります";
-                }
-                break;
+        return $recommendations;
+    }
+    
+    /**
+     * 設定の最適化提案
+     */
+    public static function getOptimizations() {
+        $optimizations = [];
+        
+        // パフォーマンス最適化
+        if (ConfigManager::get('cache.driver') === 'file') {
+            $optimizations[] = 'Consider using Redis or Memcached for better cache performance';
         }
         
-        return null;
-    }
-    
-    /**
-     * メモリ制限値が有効かチェック
-     */
-    private static function isValidMemoryLimit($value) {
-        if (!is_string($value)) return false;
-        
-        $pattern = '/^(\d+)([KMG]?)$/i';
-        return preg_match($pattern, $value);
-    }
-    
-    /**
-     * ファイルサイズ値が有効かチェック
-     */
-    private static function isValidFileSize($value) {
-        if (!is_string($value)) return false;
-        
-        $pattern = '/^(\d+)([KMG]?)$/i';
-        return preg_match($pattern, $value);
-    }
-}
-
-/**
- * 設定例外クラス
- */
-class InvalidConfigurationException extends Exception {
-    public function __construct($message = "", $code = 0, Throwable $previous = null) {
-        parent::__construct($message, $code, $previous);
+        return $optimizations;
     }
 }

@@ -22,7 +22,7 @@ $pass = 'ipgdfahuqbg3';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
-    $stmt = $pdo->prepare("SELECT b.*, GROUP_CONCAT(a.architectJa ORDER BY ba.architect_order SEPARATOR ' / ') AS architectJa, GROUP_CONCAT(a.architectEn ORDER BY ba.architect_order SEPARATOR ' / ') AS architectEn FROM buildings_table_2 b LEFT JOIN building_architects ba ON b.id = ba.building_id LEFT JOIN architects_table a ON ba.architect_id = a.architect_id WHERE b.uid = ? GROUP BY b.id");
+    $stmt = $pdo->prepare("SELECT b.*, GROUP_CONCAT(ia.name_ja ORDER BY ba.architect_order SEPARATOR ' / ') AS architectJa, GROUP_CONCAT(ia.name_en ORDER BY ba.architect_order SEPARATOR ' / ') AS architectEn FROM buildings_table_3 b LEFT JOIN building_architects ba ON b.building_id = ba.building_id LEFT JOIN architect_compositions_2 ac ON ba.architect_id = ac.architect_id LEFT JOIN individual_architects_3 ia ON ac.individual_architect_id = ia.individual_architect_id WHERE b.uid = ? GROUP BY b.building_id");
     $stmt->execute([$uid]);
     $building = $stmt->fetch(PDO::FETCH_ASSOC);
 

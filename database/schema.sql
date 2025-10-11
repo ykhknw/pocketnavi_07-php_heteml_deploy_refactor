@@ -45,12 +45,6 @@ CREATE TABLE individual_architects_3 (
     CONSTRAINT chk_slug_format CHECK (slug REGEXP '^[a-z0-9-]+$')
 );
 
--- 建築家グループテーブル
-CREATE TABLE architects_table (
-    architect_id INT AUTO_INCREMENT PRIMARY KEY,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 -- 建築家構成テーブル
 CREATE TABLE architect_compositions_2 (
     composition_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,7 +55,6 @@ CREATE TABLE architect_compositions_2 (
     -- 制約
     CONSTRAINT chk_order_index CHECK (order_index >= 0),
     UNIQUE(architect_id, individual_architect_id),
-    FOREIGN KEY (architect_id) REFERENCES architects_table(architect_id) ON DELETE CASCADE,
     FOREIGN KEY (individual_architect_id) REFERENCES individual_architects_3(individual_architect_id) ON DELETE CASCADE
 );
 
@@ -74,7 +67,6 @@ CREATE TABLE building_architects (
     PRIMARY KEY (building_id, architect_id),
     CONSTRAINT chk_architect_order CHECK (architect_order >= 0),
     FOREIGN KEY (building_id) REFERENCES buildings_table_3(building_id) ON DELETE CASCADE,
-    FOREIGN KEY (architect_id) REFERENCES architects_table(architect_id) ON DELETE CASCADE
 );
 
 -- 建築家ウェブサイトテーブル（現在は使用されていません）

@@ -354,7 +354,7 @@ if (isset($_GET['debug']) && $_GET['debug'] === '1') {
             </small>
             
             <div class="btn-group btn-group-sm">
-                <?php if (!empty($building['uid'])): ?>
+                <?php if (!empty($building['uid']) && !empty($building['has_photo']) && $building['has_photo'] != '0'): ?>
                     <button type="button" 
                             class="btn btn-outline-success btn-sm"
                             onclick="openPhoto('<?php echo htmlspecialchars($building['uid']); ?>')"
