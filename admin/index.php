@@ -310,14 +310,36 @@ try {
                 </a>
             </div>
             
-            <!-- キャッシュ管理 -->
+            <!-- 検索キャッシュ管理 -->
+            <div class="col-lg-4 col-md-6">
+                <a href="search_cache_management.php" class="feature-card d-block">
+                    <div class="feature-icon">
+                        <i data-lucide="zap" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <h5>検索キャッシュ管理</h5>
+                    <p class="text-muted mb-0">検索結果キャッシュの状態確認と管理。パフォーマンス向上のためのキャッシュシステム。</p>
+                </a>
+            </div>
+            
+            <!-- 人気検索ワードキャッシュ管理 -->
             <div class="col-lg-4 col-md-6">
                 <a href="cache_management.php" class="feature-card d-block">
                     <div class="feature-icon">
-                        <i data-lucide="database" style="width: 24px; height: 24px;"></i>
+                        <i data-lucide="star" style="width: 24px; height: 24px;"></i>
                     </div>
-                    <h5>キャッシュ管理</h5>
-                    <p class="text-muted mb-0">人気検索キャッシュの状態確認と管理。</p>
+                    <h5>人気検索ワードキャッシュ管理</h5>
+                    <p class="text-muted mb-0">人気の検索ワードのキャッシュ管理画面。検索統計とキャッシュ状態の確認。</p>
+                </a>
+            </div>
+            
+            <!-- キャッシュテスト -->
+            <div class="col-lg-4 col-md-6">
+                <a href="../index_refactored_cache_test.php" class="feature-card d-block" target="_blank">
+                    <div class="feature-icon">
+                        <i data-lucide="play-circle" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <h5>キャッシュテスト版</h5>
+                    <p class="text-muted mb-0">キャッシュ機能付きの検索システムをテスト。パフォーマンス比較が可能。</p>
                 </a>
             </div>
         </div>
