@@ -230,35 +230,9 @@ class PocketNaviSafeApp {
     private $searchResult;
     private $popularSearches;
     private $debugMode;
-    private $cacheEnabled;
-    private $cachedBuildingService;
     
     public function __construct() {
-        $this->debugMode = isset($_GET['debug']) && ($_GET['debug'] === '1' || $_GET['debug'] === 'true');
-        $this->cacheEnabled = isset($_GET['cache']) ? $_GET['cache'] === '1' : true; // デフォルトでキャッシュ有効
-        
-        // デバッグモードの確認（ログ出力）
-        if ($this->debugMode) {
-            error_log("Debug mode activated via URL parameter: " . ($_GET['debug'] ?? 'not_set'));
-        }
-        
-        // キャッシュ機能付きサービスを初期化
-        try {
-            require_once 'src/Services/CachedBuildingService.php';
-            $this->cachedBuildingService = new CachedBuildingService($this->cacheEnabled, 3600);
-            
-            // デバッグ情報を追加
-            if ($this->debugMode) {
-                error_log("CachedBuildingService initialized successfully. Cache enabled: " . ($this->cacheEnabled ? 'true' : 'false'));
-            }
-        } catch (Exception $e) {
-            error_log("CachedBuildingService initialization failed: " . $e->getMessage());
-            if ($this->debugMode) {
-                error_log("Debug - Cache service initialization error: " . $e->getTraceAsString());
-            }
-            $this->cachedBuildingService = null;
-        }
-        
+        $this->debugMode = isset($_GET['debug']) && $_GET['debug'] === '1';
         $this->initializeSearchParameters();
         $this->performSearch();
         $this->getPopularSearches();
@@ -327,9 +301,6 @@ class PocketNaviSafeApp {
     private function performSearch() {
         $limit = 10;
         
-        // パフォーマンス測定開始
-        $startTime = microtime(true);
-        
         try {
             if ($this->searchParams['buildingSlug']) {
                 $this->searchResult = $this->searchByBuildingSlug($limit);
@@ -349,152 +320,79 @@ class PocketNaviSafeApp {
                 'currentPage' => 1
             ];
         }
-        
-        // パフォーマンス測定終了
-        $endTime = microtime(true);
-        $executionTime = round(($endTime - $startTime) * 1000, 2); // ミリ秒
-        
-        // 実行時間をキャッシュ情報に追加
-        if (isset($this->searchResult['_cache_info'])) {
-            $this->searchResult['_cache_info']['execution_time_ms'] = $executionTime;
-        } else {
-            $this->searchResult['_cache_info'] = [
-                'hit' => false,
-                'reason' => 'no_cache_info',
-                'execution_time_ms' => $executionTime,
-                'created' => time(),
-                'expires' => time()
-            ];
-        }
     }
     
     /**
      * 建築物スラッグによる検索
      */
     private function searchByBuildingSlug($limit) {
-        if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->getBySlug($this->searchParams['buildingSlug'], $this->lang);
-        } else {
-            // フォールバック: 既存の関数を使用
-            $currentBuilding = getBuildingBySlug($this->searchParams['buildingSlug'], $this->lang);
-            
-            if ($currentBuilding) {
-                return [
-                    'buildings' => [$currentBuilding],
-                    'total' => 1,
-                    'totalPages' => 1,
-                    'currentPage' => 1,
-                    'currentBuilding' => $currentBuilding
-                ];
-            }
-            
+        $currentBuilding = getBuildingBySlug($this->searchParams['buildingSlug'], $this->lang);
+        
+        if ($currentBuilding) {
             return [
-                'buildings' => [],
-                'total' => 0,
-                'totalPages' => 0,
+                'buildings' => [$currentBuilding],
+                'total' => 1,
+                'totalPages' => 1,
                 'currentPage' => 1,
-                'currentBuilding' => null
+                'currentBuilding' => $currentBuilding
             ];
         }
+        
+        return [
+            'buildings' => [],
+            'total' => 0,
+            'totalPages' => 0,
+            'currentPage' => 1,
+            'currentBuilding' => null
+        ];
     }
     
     /**
      * 建築家スラッグによる検索
      */
     private function searchByArchitectSlug($limit) {
-        if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->searchByArchitectSlug(
-                $this->searchParams['architectsSlug'], 
-                $this->searchParams['page'], 
-                $this->lang, 
-                $limit
-            );
-        } else {
-            // フォールバック: 既存の関数を使用
-            return searchBuildingsByArchitectSlug(
-                $this->searchParams['architectsSlug'], 
-                $this->searchParams['page'], 
-                $this->lang, 
-                $limit, 
-                $this->searchParams['completionYears'], 
-                $this->searchParams['prefectures'], 
-                $this->searchParams['query']
-            );
-        }
+        return searchBuildingsByArchitectSlug(
+            $this->searchParams['architectsSlug'], 
+            $this->searchParams['page'], 
+            $this->lang, 
+            $limit, 
+            $this->searchParams['completionYears'], 
+            $this->searchParams['prefectures'], 
+            $this->searchParams['query']
+        );
     }
     
     /**
      * 位置情報による検索
      */
     private function searchByLocation($limit) {
-        if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->searchByLocation(
-                $this->searchParams['userLat'], 
-                $this->searchParams['userLng'], 
-                $this->searchParams['radiusKm'], 
-                $this->searchParams['page'], 
-                $this->searchParams['hasPhotos'], 
-                $this->searchParams['hasVideos'], 
-                $this->lang, 
-                $limit
-            );
-        } else {
-            // フォールバック: 既存の関数を使用
-            return searchBuildingsByLocation(
-                $this->searchParams['userLat'], 
-                $this->searchParams['userLng'], 
-                $this->searchParams['radiusKm'], 
-                $this->searchParams['page'], 
-                $this->searchParams['hasPhotos'], 
-                $this->searchParams['hasVideos'], 
-                $this->lang, 
-                $limit
-            );
-        }
+        return searchBuildingsByLocation(
+            $this->searchParams['userLat'], 
+            $this->searchParams['userLng'], 
+            $this->searchParams['radiusKm'], 
+            $this->searchParams['page'], 
+            $this->searchParams['hasPhotos'], 
+            $this->searchParams['hasVideos'], 
+            $this->lang, 
+            $limit
+        );
     }
     
     /**
      * 複数条件による検索
      */
     private function searchWithMultipleConditions($limit) {
-        if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->searchWithMultipleConditions(
-                $this->searchParams['query'], 
-                $this->searchParams['completionYears'], 
-                $this->searchParams['prefectures'], 
-                '', 
-                $this->searchParams['hasPhotos'], 
-                $this->searchParams['hasVideos'], 
-                $this->searchParams['page'], 
-                $this->lang, 
-                $limit
-            );
-        } else {
-            // フォールバック: 既存の関数を使用
-            $result = searchBuildingsWithMultipleConditions(
-                $this->searchParams['query'], 
-                $this->searchParams['completionYears'], 
-                $this->searchParams['prefectures'], 
-                '', 
-                $this->searchParams['hasPhotos'], 
-                $this->searchParams['hasVideos'], 
-                $this->searchParams['page'], 
-                $this->lang, 
-                $limit
-            );
-            
-            // フォールバック時のキャッシュ情報を追加
-            if (is_array($result)) {
-                $result['_cache_info'] = [
-                    'hit' => false,
-                    'reason' => 'cache_service_unavailable',
-                    'created' => time(),
-                    'expires' => time()
-                ];
-            }
-            
-            return $result;
-        }
+        return searchBuildingsWithMultipleConditions(
+            $this->searchParams['query'], 
+            $this->searchParams['completionYears'], 
+            $this->searchParams['prefectures'], 
+            '', 
+            $this->searchParams['hasPhotos'], 
+            $this->searchParams['hasVideos'], 
+            $this->searchParams['page'], 
+            $this->lang, 
+            $limit
+        );
     }
     
     /**
@@ -507,16 +405,6 @@ class PocketNaviSafeApp {
             error_log("Popular searches error: " . $e->getMessage());
             $this->popularSearches = [];
         }
-    }
-    
-    /**
-     * キャッシュ統計情報の取得
-     */
-    public function getCacheStats() {
-        if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->getCacheStats();
-        }
-        return null;
     }
     
     /**
@@ -557,24 +445,20 @@ class PocketNaviSafeApp {
         
         $structuredData = [];
         
-        // キャッシュ統計情報
-        $cacheStats = $this->getCacheStats();
-        
         // ビューファイルの読み込み
         $viewFile = 'src/Views/includes/production_index_view.php';
-        if (file_exists($viewFile) && !$this->debugMode) {
-            // デバッグモードでない場合のみ既存のビューファイルを使用
+        if (file_exists($viewFile)) {
             include $viewFile;
         } else {
-            // デバッグモードまたはビューファイルが存在しない場合はフォールバックビューを使用
-            $this->renderFallbackView($buildings, $totalBuildings, $totalPages, $currentPage, $currentBuilding, $architectInfo, $query, $page, $hasPhotos, $hasVideos, $userLat, $userLng, $radiusKm, $buildingSlug, $prefectures, $architectsSlug, $completionYears, $limit, $popularSearches, $lang, $seoData, $structuredData, $cacheStats);
+            // フォールバック: 元のindex.phpのHTML部分を直接出力
+            $this->renderFallbackView($buildings, $totalBuildings, $totalPages, $currentPage, $currentBuilding, $architectInfo, $query, $page, $hasPhotos, $hasVideos, $userLat, $userLng, $radiusKm, $buildingSlug, $prefectures, $architectsSlug, $completionYears, $limit, $popularSearches, $lang, $seoData, $structuredData);
         }
     }
     
     /**
      * フォールバックビューのレンダリング
      */
-    private function renderFallbackView($buildings, $totalBuildings, $totalPages, $currentPage, $currentBuilding, $architectInfo, $query, $page, $hasPhotos, $hasVideos, $userLat, $userLng, $radiusKm, $buildingSlug, $prefectures, $architectsSlug, $completionYears, $limit, $popularSearches, $lang, $seoData, $structuredData, $cacheStats) {
+    private function renderFallbackView($buildings, $totalBuildings, $totalPages, $currentPage, $currentBuilding, $architectInfo, $query, $page, $hasPhotos, $hasVideos, $userLat, $userLng, $radiusKm, $buildingSlug, $prefectures, $architectsSlug, $completionYears, $limit, $popularSearches, $lang, $seoData, $structuredData) {
         ?>
         <!DOCTYPE html>
         <html lang="<?php echo $lang; ?>">
@@ -593,39 +477,11 @@ class PocketNaviSafeApp {
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <?php if ($this->debugMode): ?>
-                            <div class="alert alert-info">
-                                <h4>🚀 PocketNavi リファクタリング版</h4>
-                                <p>新しいアーキテクチャで動作しています。</p>
-                                <div class="d-flex gap-2">
-                                    <span class="badge bg-success">REFACTORED</span>
-                                    <?php if ($this->cacheEnabled): ?>
-                                        <span class="badge bg-primary">キャッシュ有効</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary">キャッシュ無効</span>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <?php if ($cacheStats): ?>
-                                    <div class="mt-2">
-                                        <small>
-                                            キャッシュ統計: 
-                                            ファイル数: <?php echo $cacheStats['totalFiles']; ?>件, 
-                                            サイズ: <?php echo round($cacheStats['totalSize'] / 1024, 2); ?>KB
-                                        </small>
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        デバッグ情報:<br>
-                                        - キャッシュサービス: <?php echo $this->cachedBuildingService ? '利用可能' : '利用不可'; ?><br>
-                                        - キャッシュ有効: <?php echo $this->cacheEnabled ? 'true' : 'false'; ?><br>
-                                        - 検索パラメータ: <?php echo htmlspecialchars(json_encode($this->searchParams)); ?>
-                                    </small>
-                                </div>
-                            </div>
-                        <?php endif; ?>
+                        <div class="alert alert-info">
+                            <h4>🚀 PocketNavi リファクタリング版</h4>
+                            <p>新しいアーキテクチャで動作しています。</p>
+                            <span class="badge bg-success">REFACTORED</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -657,42 +513,6 @@ class PocketNaviSafeApp {
                                 <h5 class="card-title">
                                     検索結果 
                                     <span class="badge bg-primary"><?php echo $totalBuildings; ?>件</span>
-                                    
-                                    <?php if ($this->debugMode && isset($this->searchResult['_cache_info'])): ?>
-                                        <?php $cacheInfo = $this->searchResult['_cache_info']; ?>
-                                        <?php if ($cacheInfo['hit']): ?>
-                                            <span class="badge bg-success ms-2">
-                                                <i class="bi bi-lightning-charge"></i>
-                                                キャッシュヒット
-                                            </span>
-                                            <small class="text-muted d-block mt-1">
-                                                キャッシュ作成: <?php echo date('H:i:s', $cacheInfo['created']); ?> 
-                                                (<?php echo round($cacheInfo['age'] / 60, 1); ?>分前)
-                                                <?php if (isset($cacheInfo['execution_time_ms'])): ?>
-                                                    | 実行時間: <?php echo $cacheInfo['execution_time_ms']; ?>ms
-                                                <?php endif; ?>
-                                            </small>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning ms-2">
-                                                <i class="bi bi-database"></i>
-                                                データベース検索
-                                            </span>
-                                            <small class="text-muted d-block mt-1">
-                                                理由: <?php 
-                                                    switch($cacheInfo['reason']) {
-                                                        case 'cache_miss': echo 'キャッシュなし'; break;
-                                                        case 'cache_disabled': echo 'キャッシュ無効'; break;
-                                                        case 'cache_service_unavailable': echo 'キャッシュサービス利用不可'; break;
-                                                        case 'no_cache_info': echo 'キャッシュ情報なし'; break;
-                                                        default: echo $cacheInfo['reason']; break;
-                                                    }
-                                                ?>
-                                                <?php if (isset($cacheInfo['execution_time_ms'])): ?>
-                                                    | 実行時間: <?php echo $cacheInfo['execution_time_ms']; ?>ms
-                                                <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
                                 </h5>
                                 
                                 <?php if (!empty($buildings)): ?>
