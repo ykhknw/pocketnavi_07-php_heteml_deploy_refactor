@@ -28,45 +28,50 @@ class ProductionConfig {
             return;
         }
         
+        // EnvironmentLoaderを使用して設定を読み込み
+        require_once __DIR__ . '/EnvironmentLoader.php';
+        $envLoader = new EnvironmentLoader();
+        $envConfig = $envLoader->load();
+        
         // 本番環境設定の読み込み
         $this->config = [
-            'APP_NAME' => $_ENV['APP_NAME'] ?? 'PocketNavi',
-            'APP_ENV' => $_ENV['APP_ENV'] ?? 'production',
-            'APP_DEBUG' => filter_var($_ENV['APP_DEBUG'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
-            'APP_URL' => $_ENV['APP_URL'] ?? 'https://pocketnavi.example.com',
-            'APP_TIMEZONE' => $_ENV['APP_TIMEZONE'] ?? 'Asia/Tokyo',
-            'APP_LOCALE' => $_ENV['APP_LOCALE'] ?? 'ja',
-            'APP_FALLBACK_LOCALE' => $_ENV['APP_FALLBACK_LOCALE'] ?? 'ja',
+            'APP_NAME' => $envConfig['APP_NAME'] ?? 'PocketNavi',
+            'APP_ENV' => $envConfig['APP_ENV'] ?? 'production',
+            'APP_DEBUG' => filter_var($envConfig['APP_DEBUG'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
+            'APP_URL' => $envConfig['APP_URL'] ?? 'https://pocketnavi.example.com',
+            'APP_TIMEZONE' => $envConfig['APP_TIMEZONE'] ?? 'Asia/Tokyo',
+            'APP_LOCALE' => $envConfig['APP_LOCALE'] ?? 'ja',
+            'APP_FALLBACK_LOCALE' => $envConfig['APP_FALLBACK_LOCALE'] ?? 'ja',
             
             // データベース設定
-            'DB_HOST' => $_ENV['DB_HOST'] ?? 'localhost',
-            'DB_NAME' => $_ENV['DB_NAME'] ?? '_shinkenchiku_02',
-            'DB_USERNAME' => $_ENV['DB_USERNAME'] ?? 'pocketnavi_user',
-            'DB_PASSWORD' => $_ENV['DB_PASSWORD'] ?? '',
-            'DB_PORT' => $_ENV['DB_PORT'] ?? '3306',
-            'DB_CHARSET' => $_ENV['DB_CHARSET'] ?? 'utf8mb4',
+            'DB_HOST' => $envConfig['DB_HOST'] ?? 'localhost',
+            'DB_NAME' => $envConfig['DB_NAME'] ?? '_shinkenchiku_02',
+            'DB_USERNAME' => $envConfig['DB_USERNAME'] ?? 'root',
+            'DB_PASSWORD' => $envConfig['DB_PASSWORD'] ?? '',
+            'DB_PORT' => $envConfig['DB_PORT'] ?? '3306',
+            'DB_CHARSET' => $envConfig['DB_CHARSET'] ?? 'utf8mb4',
             
             // セッション設定
-            'SESSION_LIFETIME' => $_ENV['SESSION_LIFETIME'] ?? '7200',
-            'SESSION_SECURE' => filter_var($_ENV['SESSION_SECURE'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
-            'SESSION_HTTP_ONLY' => filter_var($_ENV['SESSION_HTTP_ONLY'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
-            'SESSION_SAME_SITE' => $_ENV['SESSION_SAME_SITE'] ?? 'strict',
+            'SESSION_LIFETIME' => $envConfig['SESSION_LIFETIME'] ?? '7200',
+            'SESSION_SECURE' => filter_var($envConfig['SESSION_SECURE'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
+            'SESSION_HTTP_ONLY' => filter_var($envConfig['SESSION_HTTP_ONLY'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
+            'SESSION_SAME_SITE' => $envConfig['SESSION_SAME_SITE'] ?? 'strict',
             
             // パフォーマンス設定
-            'MAX_EXECUTION_TIME' => $_ENV['MAX_EXECUTION_TIME'] ?? '30',
-            'MEMORY_LIMIT' => $_ENV['MEMORY_LIMIT'] ?? '512M',
-            'UPLOAD_MAX_FILESIZE' => $_ENV['UPLOAD_MAX_FILESIZE'] ?? '10M',
-            'POST_MAX_SIZE' => $_ENV['POST_MAX_SIZE'] ?? '10M',
+            'MAX_EXECUTION_TIME' => $envConfig['MAX_EXECUTION_TIME'] ?? '30',
+            'MEMORY_LIMIT' => $envConfig['MEMORY_LIMIT'] ?? '512M',
+            'UPLOAD_MAX_FILESIZE' => $envConfig['UPLOAD_MAX_FILESIZE'] ?? '10M',
+            'POST_MAX_SIZE' => $envConfig['POST_MAX_SIZE'] ?? '10M',
             
             // ログ設定
-            'LOG_LEVEL' => $_ENV['LOG_LEVEL'] ?? 'error',
-            'LOG_FILE' => $_ENV['LOG_FILE'] ?? 'logs/production_errors.log',
+            'LOG_LEVEL' => $envConfig['LOG_LEVEL'] ?? 'error',
+            'LOG_FILE' => $envConfig['LOG_FILE'] ?? 'logs/production_errors.log',
             
             // セキュリティ設定
-            'APP_KEY' => $_ENV['APP_KEY'] ?? 'production-secret-key-change-this',
-            'CSRF_PROTECTION' => filter_var($_ENV['CSRF_PROTECTION'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
-            'RATE_LIMITING' => filter_var($_ENV['RATE_LIMITING'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
-            'SECURITY_HEADERS' => filter_var($_ENV['SECURITY_HEADERS'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
+            'APP_KEY' => $envConfig['APP_KEY'] ?? 'production-secret-key-change-this',
+            'CSRF_PROTECTION' => filter_var($envConfig['CSRF_PROTECTION'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
+            'RATE_LIMITING' => filter_var($envConfig['RATE_LIMITING'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
+            'SECURITY_HEADERS' => filter_var($envConfig['SECURITY_HEADERS'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
         ];
         
         $this->loaded = true;

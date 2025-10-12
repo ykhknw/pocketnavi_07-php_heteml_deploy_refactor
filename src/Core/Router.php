@@ -62,7 +62,11 @@ class Router {
      */
     private static function executeHandler($handler, $params) {
         if (is_callable($handler)) {
-            return call_user_func_array($handler, $params);
+            $result = call_user_func_array($handler, $params);
+            if ($result !== null) {
+                echo $result;
+            }
+            return true;
         }
         return false;
     }

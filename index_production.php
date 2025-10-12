@@ -91,11 +91,10 @@ $startMemory = memory_get_usage();
 try {
     // ルーティングシステムの読み込み
     require_once __DIR__ . '/src/Core/Router.php';
-    require_once __DIR__ . '/routes/web.php';
+    require_once __DIR__ . '/routes/web_minimal.php';
     
     // リクエストの処理
-    $router = new Router();
-    $router->dispatch();
+    Router::dispatch();
     
 } catch (Exception $e) {
     // 本番環境でのエラーハンドリング

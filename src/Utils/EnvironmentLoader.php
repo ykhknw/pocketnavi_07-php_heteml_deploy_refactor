@@ -1,66 +1,54 @@
 <?php
-
 /**
- * 環境変数読み込みユーティリティ
- * .envファイルから環境変数を読み込み、getenv()でアクセス可能にする
+ * 環境設定ローダー
+ * .envファイルから設定を読み込む
  */
 class EnvironmentLoader {
+    
+    private static $config = [];
     private static $loaded = false;
-    private static $envFile = null;
     
     /**
-     * 環境変数の読み込み
-     * @param string $envFile .envファイルのパス
+     * 設定を読み込む
      */
-    public static function load($envFile = null) {
+    public function load() {
         if (self::$loaded) {
-            return;
+            return self::$config;
         }
         
-        // デフォルトの.envファイルパスを設定
-        if ($envFile === null) {
-            $envFile = self::findEnvFile();
-        }
-        
-        if ($envFile && file_exists($envFile)) {
-            self::$envFile = $envFile;
-            self::parseEnvFile($envFile);
-        }
-        
-        self::$loaded = true;
-    }
-    
-    /**
-     * .envファイルを検索
-     * @return string|null
-     */
-    private static function findEnvFile() {
-        $possiblePaths = [
-            __DIR__ . '/../../.env',
+        // 複数の.envファイルを試行
+        $envFiles = [
             __DIR__ . '/../../config/.env',
-            getcwd() . '/.env',
-            getcwd() . '/config/.env'
+            __DIR__ . '/../../config/.env.local',
+            __DIR__ . '/../../.env',
+            __DIR__ . '/../../.env.local'
         ];
         
-        foreach ($possiblePaths as $path) {
-            if (file_exists($path)) {
-                return $path;
+        foreach ($envFiles as $envFile) {
+            if (file_exists($envFile)) {
+                $this->parseEnvFile($envFile);
+                break;
             }
         }
         
-        return null;
+        // デフォルト値を設定
+        $this->setDefaults();
+        
+        self::$loaded = true;
+        return self::$config;
     }
     
     /**
-     * .envファイルを解析して環境変数を設定
-     * @param string $envFile
+     * .envファイルを解析
      */
-    private static function parseEnvFile($envFile) {
-        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    private function parseEnvFile($filePath) {
+        $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         
         foreach ($lines as $line) {
+            $line = trim($line);
+            
             // コメント行をスキップ
-            if (strpos(trim($line), '#') === 0) {
+            if (strpos($line, '#') === 0) {
                 continue;
             }
             
@@ -70,78 +58,60 @@ class EnvironmentLoader {
                 $key = trim($key);
                 $value = trim($value);
                 
-                // クォートを除去
+                // クォートを削除
                 if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
                     (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
                     $value = substr($value, 1, -1);
                 }
                 
-                // 環境変数が設定されていない場合のみ設定
-                if (getenv($key) === false) {
-                    putenv("$key=$value");
-                    $_ENV[$key] = $value;
-                }
+                self::$config[$key] = $value;
             }
         }
     }
     
     /**
-     * 環境変数の取得（デフォルト値付き）
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
+     * デフォルト値を設定
+     */
+    private function setDefaults() {
+        $defaults = [
+            'DB_HOST' => 'localhost',
+            'DB_NAME' => '_shinkenchiku_02',
+            'DB_USERNAME' => 'root',
+            'DB_PASSWORD' => '',
+            'APP_NAME' => 'PocketNavi',
+            'APP_ENV' => 'local',
+            'APP_DEBUG' => 'true',
+            'APP_KEY' => '0a53961ea1609c394e8178c61b64c58491d0b59629ec310c60f9ac8b75eb8d4a',
+            'SESSION_LIFETIME' => '7200',
+            'SESSION_SECURE' => 'false',
+            'SESSION_HTTP_ONLY' => 'true',
+            'SESSION_SAME_SITE' => 'strict',
+            'LOG_LEVEL' => 'debug',
+            'LOG_FILE' => 'logs/application.log',
+            'CACHE_ENABLED' => 'true',
+            'CACHE_TTL' => '300',
+            'CSRF_ENABLED' => 'true',
+            'RATE_LIMIT_ENABLED' => 'false',
+            'DEFAULT_LANGUAGE' => 'ja',
+            'SUPPORTED_LANGUAGES' => 'ja,en'
+        ];
+        
+        foreach ($defaults as $key => $value) {
+            if (!isset(self::$config[$key])) {
+                self::$config[$key] = $value;
+            }
+        }
+    }
+    
+    /**
+     * 設定値を取得
      */
     public static function get($key, $default = null) {
-        $value = getenv($key);
-        return $value !== false ? $value : $default;
-    }
-    
-    /**
-     * 環境変数の取得（必須）
-     * @param string $key
-     * @return string
-     * @throws Exception
-     */
-    public static function getRequired($key) {
-        $value = getenv($key);
-        if ($value === false) {
-            throw new Exception("Required environment variable '$key' is not set");
+        if (!self::$loaded) {
+            $instance = new self();
+            $instance->load();
         }
-        return $value;
-    }
-    
-    /**
-     * 環境変数の設定
-     * @param string $key
-     * @param mixed $value
-     */
-    public static function set($key, $value) {
-        putenv("$key=$value");
-        $_ENV[$key] = $value;
-    }
-    
-    /**
-     * 環境変数の存在確認
-     * @param string $key
-     * @return bool
-     */
-    public static function has($key) {
-        return getenv($key) !== false;
-    }
-    
-    /**
-     * 読み込まれた.envファイルのパスを取得
-     * @return string|null
-     */
-    public static function getEnvFile() {
-        return self::$envFile;
-    }
-    
-    /**
-     * 環境変数の一覧を取得（デバッグ用）
-     * @return array
-     */
-    public static function getAll() {
-        return $_ENV;
+        
+        return self::$config[$key] ?? $default;
     }
 }

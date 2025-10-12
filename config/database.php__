@@ -1,0 +1,63 @@
+<?php
+/**
+ * データベース設定ファイル
+ * .envファイルから設定を読み込む
+ */
+
+// 環境設定の読み込み
+require_once __DIR__ . '/../src/Utils/EnvironmentLoader.php';
+
+/**
+ * データベース設定を取得
+ */
+function getDatabaseConfig() {
+    $envLoader = new EnvironmentLoader();
+    $config = $envLoader->load();
+    
+    return [
+        'host' => $config['DB_HOST'] ?? 'localhost',
+        'dbname' => $config['DB_NAME'] ?? '_shinkenchiku_02',
+        'username' => $config['DB_USERNAME'] ?? 'root',
+        'password' => $config['DB_PASSWORD'] ?? '',
+        'charset' => 'utf8mb4',
+        'options' => [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]
+    ];
+}
+
+/**
+ * データベース接続を取得
+ */
+function getDatabaseConnection() {
+    static $pdo = null;
+    if ($pdo === null) {
+        try {
+            $config = getDatabaseConfig();
+            $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+            $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+        } catch (PDOException $e) {
+            error_log("Database connection error: " . $e->getMessage());
+            throw new Exception("データベース接続エラーが発生しました。");
+        }
+    }
+    return $pdo;
+}
+
+/**
+ * データベース接続の取得（getDB関数との互換性のため）
+ */
+function getDB() {
+    return getDatabaseConnection();
+}
+
+// データベース定数の定義
+$dbConfig = getDatabaseConfig();
+define('DB_HOST', $dbConfig['host']);
+define('DB_NAME', $dbConfig['dbname']);
+define('DB_USER', $dbConfig['username']);
+define('DB_PASS', $dbConfig['password']);
+define('DB_CHARSET', $dbConfig['charset']);
+?>

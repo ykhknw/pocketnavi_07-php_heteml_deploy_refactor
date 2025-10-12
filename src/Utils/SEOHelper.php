@@ -32,10 +32,12 @@ class SEOHelper {
      * 建築物ページのメタタグ
      */
     private static function generateBuildingMetaTags($building, $lang, $baseUrl) {
-        // デバッグ用ログ（一時的）
-        error_log("SEO Debug - Building data keys: " . implode(', ', array_keys($building)));
-        error_log("SEO Debug - architectJa type: " . gettype($building['architectJa'] ?? 'not_set'));
-        error_log("SEO Debug - architectJa value: " . print_r($building['architectJa'] ?? 'not_set', true));
+        // デバッグ用ログ（開発環境のみ）
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
+            error_log("SEO Debug - Building data keys: " . implode(', ', array_keys($building)));
+            error_log("SEO Debug - architectJa type: " . gettype($building['architectJa'] ?? 'not_set'));
+            error_log("SEO Debug - architectJa value: " . print_r($building['architectJa'] ?? 'not_set', true));
+        }
         
         $title = $lang === 'ja' ? $building['title'] : ($building['titleEn'] ?? $building['title']);
         
