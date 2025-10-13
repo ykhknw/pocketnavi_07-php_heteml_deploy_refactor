@@ -312,7 +312,7 @@ try {
             
             <!-- 検索キャッシュ管理 -->
             <div class="col-lg-4 col-md-6">
-                <a href="search_cache_management.php" class="feature-card d-block">
+                <a href="simple_cache_management.php" class="feature-card d-block">
                     <div class="feature-icon">
                         <i data-lucide="zap" style="width: 24px; height: 24px;"></i>
                     </div>

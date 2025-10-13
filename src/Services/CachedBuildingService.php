@@ -128,6 +128,10 @@ class CachedBuildingService extends BuildingService {
         if ($this->cacheEnabled) {
             $cached = $this->cache->get($params);
             if ($cached !== null) {
+                // キャッシュから取得した結果にarchitectInfoを追加
+                if (!isset($cached['architectInfo'])) {
+                    $cached['architectInfo'] = $this->getArchitectInfo($architectSlug, $lang);
+                }
                 return $cached;
             }
         }
@@ -135,10 +139,27 @@ class CachedBuildingService extends BuildingService {
         // キャッシュがない場合は既存の検索を実行
         $result = parent::searchByArchitectSlug($architectSlug, $page, $lang, $limit);
         
+        // 建築家情報を追加
+        $result['architectInfo'] = $this->getArchitectInfo($architectSlug, $lang);
+        
         // 結果をキャッシュに保存（キャッシュが無効でも_cache_infoを追加）
         $this->cache->set($params, $result);
         
         return $result;
+    }
+    
+    /**
+     * 建築家情報を取得
+     */
+    private function getArchitectInfo($architectSlug, $lang) {
+        try {
+            require_once __DIR__ . '/ArchitectService.php';
+            $architectService = new ArchitectService();
+            return $architectService->getBySlug($architectSlug, $lang);
+        } catch (Exception $e) {
+            error_log("Get architect info error: " . $e->getMessage());
+            return null;
+        }
     }
     
     /**

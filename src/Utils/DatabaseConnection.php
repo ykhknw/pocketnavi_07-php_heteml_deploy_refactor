@@ -46,7 +46,7 @@ class DatabaseConnection {
         // 環境変数から設定を読み込み
         $this->config = [
             'host' => getenv('DB_HOST') ?: 'localhost',
-            'dbname' => getenv('DB_NAME') ?: '_shinkenchiku_db',
+            'dbname' => getenv('DB_NAME') ?: '_shinkenchiku_02',
             'username' => getenv('DB_USERNAME') ?: 'root',
             'password' => getenv('DB_PASSWORD') ?: '',
             'charset' => 'utf8mb4',

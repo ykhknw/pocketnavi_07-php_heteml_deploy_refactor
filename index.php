@@ -373,29 +373,29 @@ class PocketNaviSafeApp {
      */
     private function searchByBuildingSlug($limit) {
         if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->getBySlug($this->searchParams['buildingSlug'], $this->lang);
+            $currentBuilding = $this->cachedBuildingService->getBySlug($this->searchParams['buildingSlug'], $this->lang);
         } else {
             // フォールバック: 既存の関数を使用
             $currentBuilding = getBuildingBySlug($this->searchParams['buildingSlug'], $this->lang);
-            
-            if ($currentBuilding) {
-                return [
-                    'buildings' => [$currentBuilding],
-                    'total' => 1,
-                    'totalPages' => 1,
-                    'currentPage' => 1,
-                    'currentBuilding' => $currentBuilding
-                ];
-            }
-            
+        }
+        
+        if ($currentBuilding) {
             return [
-                'buildings' => [],
-                'total' => 0,
-                'totalPages' => 0,
+                'buildings' => [$currentBuilding],
+                'total' => 1,
+                'totalPages' => 1,
                 'currentPage' => 1,
-                'currentBuilding' => null
+                'currentBuilding' => $currentBuilding
             ];
         }
+        
+        return [
+            'buildings' => [],
+            'total' => 0,
+            'totalPages' => 0,
+            'currentPage' => 1,
+            'currentBuilding' => null
+        ];
     }
     
     /**
@@ -572,6 +572,69 @@ class PocketNaviSafeApp {
     }
     
     /**
+     * 都道府県の表示名を取得
+     */
+    private function getPrefectureDisplayName($prefectures, $lang) {
+        // 都道府県の英語名から日本語名への変換マップ
+        $prefectureMap = [
+            'Aichi' => '愛知県',
+            'Tokyo' => '東京都',
+            'Osaka' => '大阪府',
+            'Kyoto' => '京都府',
+            'Kanagawa' => '神奈川県',
+            'Saitama' => '埼玉県',
+            'Chiba' => '千葉県',
+            'Hyogo' => '兵庫県',
+            'Fukuoka' => '福岡県',
+            'Hokkaido' => '北海道',
+            'Aomori' => '青森県',
+            'Iwate' => '岩手県',
+            'Miyagi' => '宮城県',
+            'Akita' => '秋田県',
+            'Yamagata' => '山形県',
+            'Fukushima' => '福島県',
+            'Ibaraki' => '茨城県',
+            'Tochigi' => '栃木県',
+            'Gunma' => '群馬県',
+            'Niigata' => '新潟県',
+            'Toyama' => '富山県',
+            'Ishikawa' => '石川県',
+            'Fukui' => '福井県',
+            'Yamanashi' => '山梨県',
+            'Nagano' => '長野県',
+            'Gifu' => '岐阜県',
+            'Shizuoka' => '静岡県',
+            'Mie' => '三重県',
+            'Shiga' => '滋賀県',
+            'Nara' => '奈良県',
+            'Wakayama' => '和歌山県',
+            'Tottori' => '鳥取県',
+            'Shimane' => '島根県',
+            'Okayama' => '岡山県',
+            'Hiroshima' => '広島県',
+            'Yamaguchi' => '山口県',
+            'Tokushima' => '徳島県',
+            'Kagawa' => '香川県',
+            'Ehime' => '愛媛県',
+            'Kochi' => '高知県',
+            'Saga' => '佐賀県',
+            'Nagasaki' => '長崎県',
+            'Kumamoto' => '熊本県',
+            'Oita' => '大分県',
+            'Miyazaki' => '宮崎県',
+            'Kagoshima' => '鹿児島県',
+            'Okinawa' => '沖縄県'
+        ];
+        
+        // 言語に応じて表示名を返す
+        if ($lang === 'ja') {
+            return $prefectureMap[$prefectures] ?? $prefectures;
+        } else {
+            return $prefectures;
+        }
+    }
+    
+    /**
      * フォールバックビューのレンダリング
      */
     private function renderFallbackView($buildings, $totalBuildings, $totalPages, $currentPage, $currentBuilding, $architectInfo, $query, $page, $hasPhotos, $hasVideos, $userLat, $userLng, $radiusKm, $buildingSlug, $prefectures, $architectsSlug, $completionYears, $limit, $popularSearches, $lang, $seoData, $structuredData, $cacheStats) {
@@ -650,6 +713,34 @@ class PocketNaviSafeApp {
                                 </form>
                             </div>
                         </div>
+                        
+                        <!-- フィルター適用済み -->
+                        <?php if ($architectsSlug && $architectInfo): ?>
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">フィルター適用済み</h6>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-primary">
+                                            <?php echo htmlspecialchars($architectInfo['name'] ?? $architectInfo['name_ja'] ?? $architectInfo['name_en'] ?? $architectsSlug); ?>
+                                            <a href="?" class="text-white text-decoration-none ms-1">×</a>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php elseif ($prefectures): ?>
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">フィルター適用済み</h6>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-primary">
+                                            <i class="bi bi-geo-alt"></i>
+                                            <?php echo htmlspecialchars($this->getPrefectureDisplayName($prefectures, $lang)); ?>
+                                            <a href="?" class="text-white text-decoration-none ms-1">×</a>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                         
                         <!-- 検索結果 -->
                         <div class="card">

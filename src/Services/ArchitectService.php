@@ -14,9 +14,17 @@ class ArchitectService {
     private $buildings_table = 'buildings_table_3';
     
     public function __construct() {
-        $this->db = getDB();
-        if ($this->db === null) {
-            throw new Exception("Database connection failed");
+        // データベース接続を取得
+        try {
+            require_once __DIR__ . '/../Utils/DatabaseConnection.php';
+            $dbConnection = DatabaseConnection::getInstance();
+            $this->db = $dbConnection->getConnection();
+            
+            if ($this->db === null) {
+                throw new Exception("Database connection failed");
+            }
+        } catch (Exception $e) {
+            throw new Exception("Database connection failed: " . $e->getMessage());
         }
     }
     

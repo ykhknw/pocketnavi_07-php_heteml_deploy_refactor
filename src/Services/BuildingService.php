@@ -14,9 +14,17 @@ class BuildingService {
     private $individual_architects_table = 'individual_architects_3';
     
     public function __construct() {
-        $this->db = getDB();
-        if ($this->db === null) {
-            throw new Exception("Database connection failed");
+        // データベース接続を取得
+        try {
+            require_once __DIR__ . '/../Utils/DatabaseConnection.php';
+            $dbConnection = DatabaseConnection::getInstance();
+            $this->db = $dbConnection->getConnection();
+            
+            if ($this->db === null) {
+                throw new Exception("Database connection failed");
+            }
+        } catch (Exception $e) {
+            throw new Exception("Database connection failed: " . $e->getMessage());
         }
     }
     
@@ -520,6 +528,11 @@ class BuildingService {
             return;
         }
         
+        // 文字列の場合は配列に変換
+        if (is_string($completionYears)) {
+            $completionYears = [$completionYears];
+        }
+        
         $yearConditions = [];
         foreach ($completionYears as $year) {
             $yearConditions[] = "b.completionYears LIKE ?";
@@ -589,6 +602,11 @@ class BuildingService {
             'Kagoshima' => '鹿児島県',
             'Okinawa' => '沖縄県'
         ];
+        
+        // 文字列の場合は配列に変換
+        if (is_string($prefectures)) {
+            $prefectures = [$prefectures];
+        }
         
         $prefectureConditions = [];
         foreach ($prefectures as $prefecture) {
