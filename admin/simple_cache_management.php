@@ -131,7 +131,26 @@ if (isset($_POST['update_ttl'])) {
 // 古いキャッシュの自動削除処理
 if (isset($_POST['cleanup_old_cache'])) {
     try {
-        $cacheDir = $cacheConfig['cache_dir'] ?? 'cache/search';
+        // キャッシュディレクトリのパスを動的に取得（分析処理と同じロジック）
+        $cacheDir = null;
+        $possiblePaths = [
+            'cache/search',
+            '../cache/search',
+            './cache/search',
+            'cache/search_results'
+        ];
+        
+        foreach ($possiblePaths as $path) {
+            if (is_dir($path)) {
+                $cacheDir = $path;
+                break;
+            }
+        }
+        
+        if (!$cacheDir) {
+            $cacheDir = $cacheConfig['cache_dir'] ?? 'cache/search';
+        }
+        
         $deletedCount = 0;
         $deletedSize = 0;
         
@@ -155,7 +174,7 @@ if (isset($_POST['cleanup_old_cache'])) {
         }
         
         $deletedSizeMB = round($deletedSize / 1024 / 1024, 2);
-        $message = "古いキャッシュを削除しました。削除されたファイル数: $deletedCount件、削除されたサイズ: {$deletedSizeMB}MB";
+        $message = "古いキャッシュを削除しました。削除されたファイル数: $deletedCount件、削除されたサイズ: {$deletedSizeMB}MB (使用ディレクトリ: $cacheDir)";
     } catch (Exception $e) {
         $error = "古いキャッシュの削除中にエラーが発生しました: " . $e->getMessage();
     }
@@ -164,22 +183,42 @@ if (isset($_POST['cleanup_old_cache'])) {
 // キャッシュファイル数の制限処理
 if (isset($_POST['limit_cache_files'])) {
     try {
-        $cacheDir = $cacheConfig['cache_dir'] ?? 'cache/search';
+        // キャッシュディレクトリのパスを動的に取得（分析処理と同じロジック）
+        $cacheDir = null;
+        $possiblePaths = [
+            'cache/search',
+            '../cache/search',
+            './cache/search',
+            'cache/search_results'
+        ];
+        
+        foreach ($possiblePaths as $path) {
+            if (is_dir($path)) {
+                $cacheDir = $path;
+                break;
+            }
+        }
+        
+        if (!$cacheDir) {
+            $cacheDir = $cacheConfig['cache_dir'] ?? 'cache/search';
+        }
+        
         $maxFiles = 50000; // 最大ファイル数
         $deletedCount = 0;
         $deletedSize = 0;
         
         if (is_dir($cacheDir)) {
             $cacheFiles = glob($cacheDir . '/*.cache');
+            $currentFileCount = count($cacheFiles);
             
-            if (count($cacheFiles) > $maxFiles) {
+            if ($currentFileCount > $maxFiles) {
                 // ファイルを更新日時でソート（古い順）
                 usort($cacheFiles, function($a, $b) {
                     return filemtime($a) - filemtime($b);
                 });
                 
                 // 古いファイルから削除
-                $filesToDelete = count($cacheFiles) - $maxFiles;
+                $filesToDelete = $currentFileCount - $maxFiles;
                 for ($i = 0; $i < $filesToDelete; $i++) {
                     $fileSize = filesize($cacheFiles[$i]);
                     if (unlink($cacheFiles[$i])) {
@@ -191,7 +230,7 @@ if (isset($_POST['limit_cache_files'])) {
         }
         
         $deletedSizeMB = round($deletedSize / 1024 / 1024, 2);
-        $message = "キャッシュファイル数を制限しました。削除されたファイル数: $deletedCount件、削除されたサイズ: {$deletedSizeMB}MB";
+        $message = "キャッシュファイル数を制限しました。削除されたファイル数: $deletedCount件、削除されたサイズ: {$deletedSizeMB}MB (使用ディレクトリ: $cacheDir)";
     } catch (Exception $e) {
         $error = "キャッシュファイル数の制限中にエラーが発生しました: " . $e->getMessage();
     }
