@@ -956,7 +956,117 @@ class SearchResultsUpdater {
 // ページ読み込み完了後に初期化
 document.addEventListener('DOMContentLoaded', function() {
     new SearchResultsUpdater();
+    
+    // Phase 3A: アニメーション効果の初期化
+    initializeAnimations();
 });
+
+// Phase 3A: アニメーション効果の初期化
+function initializeAnimations() {
+    // アニメーション無効化の確認
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    if (prefersReducedMotion) {
+        // アニメーションを無効化
+        document.documentElement.style.setProperty('--animation-duration', '0.01ms');
+        return;
+    }
+    
+    // 建築物カードの段階的表示アニメーション
+    const buildingCards = document.querySelectorAll('.building-card');
+    buildingCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease-out';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100); // 100ms間隔で段階的に表示
+    });
+    
+    // フィルターバッジのクリック効果
+    const filterBadges = document.querySelectorAll('.filter-badge, .architect-badge, .building-type-badge, .prefecture-badge, .completion-year-badge');
+    filterBadges.forEach(badge => {
+        badge.addEventListener('click', function(e) {
+            // クリック時のリップル効果
+            const ripple = document.createElement('span');
+            ripple.style.position = 'absolute';
+            ripple.style.borderRadius = '50%';
+            ripple.style.background = 'rgba(255, 255, 255, 0.6)';
+            ripple.style.transform = 'scale(0)';
+            ripple.style.animation = 'ripple 0.6s linear';
+            ripple.style.left = e.offsetX + 'px';
+            ripple.style.top = e.offsetY + 'px';
+            ripple.style.width = ripple.style.height = '20px';
+            ripple.style.pointerEvents = 'none';
+            
+            this.style.position = 'relative';
+            this.style.overflow = 'hidden';
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+    });
+    
+    // 検索結果件数のカウントアップアニメーション
+    const resultCounts = document.querySelectorAll('.search-results-summary strong');
+    resultCounts.forEach(element => {
+        const finalCount = parseInt(element.textContent.replace(/[^\d]/g, ''));
+        if (finalCount > 0) {
+            animateCountUp(element, finalCount);
+        }
+    });
+    
+    // ページネーションのホバー効果強化
+    const pageLinks = document.querySelectorAll('.page-link');
+    pageLinks.forEach(link => {
+        link.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.1)';
+        });
+        
+        link.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+}
+
+// カウントアップアニメーション
+function animateCountUp(element, finalCount) {
+    const duration = 1000; // 1秒
+    const startTime = performance.now();
+    
+    function updateCount(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // イージング関数（ease-out）
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const currentCount = Math.floor(finalCount * easeOut);
+        
+        element.textContent = currentCount.toLocaleString() + '件';
+        
+        if (progress < 1) {
+            requestAnimationFrame(updateCount);
+        }
+    }
+    
+    requestAnimationFrame(updateCount);
+}
+
+// リップル効果のCSSアニメーション
+const rippleStyle = document.createElement('style');
+rippleStyle.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(rippleStyle);
 </script>
 
         </head>

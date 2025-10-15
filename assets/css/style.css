@@ -1,5 +1,428 @@
 /* Custom CSS for PocketNavi */
 
+/* ============================================================================
+   Phase 3A: 基本的なホバー効果とトランジション
+   ============================================================================ */
+
+/* 基本的なトランジション設定 */
+* {
+    transition: all 0.2s ease;
+}
+
+/* アニメーション無効化の対応 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ボタンのホバー効果 */
+.btn {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+    transition: transform 0.1s ease;
+}
+
+/* プライマリボタンの特別な効果 */
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* セカンダリボタンの効果 */
+.btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #4e555b;
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* カードのホバー効果 */
+.card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: rgba(0, 123, 255, 0.2);
+}
+
+/* 建築物カードの特別な効果 */
+.building-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.building-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.building-card:hover .card-title {
+    color: #007bff;
+}
+
+/* フォーム要素のホバー効果 */
+.form-control {
+    transition: all 0.3s ease;
+}
+
+.form-control:hover {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.1);
+}
+
+.form-control:focus {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    border-color: #80bdff;
+}
+
+/* セレクトボックスの効果 */
+.form-select {
+    transition: all 0.3s ease;
+}
+
+.form-select:hover {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.1);
+}
+
+.form-select:focus {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    border-color: #80bdff;
+}
+
+/* チェックボックスの効果 */
+.form-check-input {
+    transition: all 0.2s ease;
+}
+
+.form-check-input:hover {
+    transform: scale(1.1);
+}
+
+.form-check-input:checked {
+    transform: scale(1.05);
+}
+
+/* リンクのホバー効果 */
+a {
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    transform: translateY(-1px);
+}
+
+/* ナビゲーションリンクの効果 */
+.nav-link {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.nav-link:hover {
+    transform: translateY(-2px);
+    color: #007bff;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background-color: #007bff;
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
+
+/* バッジのホバー効果 */
+.badge {
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ページネーションの効果 */
+.page-link {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.page-link:hover {
+    transform: scale(1.1);
+    background-color: #007bff;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.page-link:active {
+    transform: scale(0.95);
+}
+
+/* アクティブページの特別な効果 */
+.page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+}
+
+/* アラートの効果 */
+.alert {
+    transition: all 0.3s ease;
+}
+
+.alert:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* モーダルの効果 */
+.modal-content {
+    transition: all 0.3s ease;
+}
+
+.modal.show .modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ドロップダウンの効果 */
+.dropdown-menu {
+    transition: all 0.2s ease;
+}
+
+.dropdown-menu.show {
+    animation: dropdownSlideIn 0.2s ease-out;
+}
+
+@keyframes dropdownSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ツールチップの効果 */
+.tooltip {
+    transition: all 0.2s ease;
+}
+
+.tooltip.show {
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ローディングスピナーの効果 */
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* プログレスバーの効果 */
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* タブの効果 */
+.nav-tabs .nav-link {
+    transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+    transform: translateY(-2px);
+}
+
+.nav-tabs .nav-link.active {
+    animation: tabActive 0.3s ease-out;
+}
+
+@keyframes tabActive {
+    from {
+        background-color: transparent;
+    }
+    to {
+        background-color: #fff;
+    }
+}
+
+/* アコーディオンの効果 */
+.accordion-button {
+    transition: all 0.2s ease;
+}
+
+.accordion-button:hover {
+    background-color: #e7f1ff;
+    transform: translateX(5px);
+}
+
+.accordion-button:not(.collapsed) {
+    animation: accordionExpand 0.3s ease-out;
+}
+
+@keyframes accordionExpand {
+    from {
+        background-color: #e7f1ff;
+    }
+    to {
+        background-color: #cfe2ff;
+    }
+}
+
+/* リストグループの効果 */
+.list-group-item {
+    transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+    border-left: 4px solid #007bff;
+}
+
+/* テーブルの効果 */
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 画像の効果 */
+img {
+    transition: all 0.3s ease;
+}
+
+img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* アイコンの効果 */
+i, .icon {
+    transition: all 0.2s ease;
+}
+
+i:hover, .icon:hover {
+    transform: scale(1.2);
+}
+
+/* 検索結果の特別な効果 */
+.search-results-summary {
+    transition: all 0.3s ease;
+}
+
+.search-results-summary:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* フィルターバッジの効果 */
+.filter-badge {
+    transition: all 0.2s ease;
+}
+
+.filter-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    .building-card:hover {
+        transform: translateY(-4px);
+    }
+}
+
+/* タッチデバイス対応 */
+@media (hover: none) {
+    .card:hover,
+    .btn:hover,
+    .building-card:hover,
+    .nav-link:hover,
+    .page-link:hover {
+        transform: none;
+    }
+    
+    .card:active,
+    .btn:active,
+    .building-card:active {
+        transform: scale(0.98);
+    }
+}
+
 /* 検索結果番号バッジ */
 .search-number-badge {
     background-color: #2563eb;
@@ -27,17 +450,23 @@
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     box-shadow: 0 1px 2px rgba(66, 99, 235, 0.1);
+    cursor: pointer;
 }
 
 .architect-badge:hover {
     background-color: #e6eeff;
     border-color: #d1d9ff;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(66, 99, 235, 0.15);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(66, 99, 235, 0.25);
     color: #4263eb;
     text-decoration: none;
+}
+
+.architect-badge:active {
+    transform: translateY(-1px) scale(1.02);
+    transition: transform 0.1s ease;
 }
 
 .architect-badge i {
@@ -56,15 +485,21 @@
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     box-shadow: 0 1px 2px rgba(108, 117, 125, 0.1);
+    cursor: pointer;
 }
 
 .building-type-badge:hover {
     background-color: #e9ecef;
     border-color: #ced4da;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.15);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.25);
+}
+
+.building-type-badge:active {
+    transform: translateY(-1px) scale(1.02);
+    transition: transform 0.1s ease;
 }
 
 .building-type-badge i {
@@ -83,15 +518,21 @@
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     box-shadow: 0 1px 2px rgba(22, 163, 74, 0.1);
+    cursor: pointer;
 }
 
 .prefecture-badge:hover {
     background-color: #dcfce7;
     border-color: #86efac;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.15);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.25);
+}
+
+.prefecture-badge:active {
+    transform: translateY(-1px) scale(1.02);
+    transition: transform 0.1s ease;
 }
 
 .prefecture-badge i {
@@ -110,15 +551,21 @@
     display: inline-flex !important;
     align-items: center !important;
     white-space: nowrap !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.3s ease !important;
     box-shadow: 0 1px 2px rgba(108, 117, 125, 0.1) !important;
+    cursor: pointer !important;
 }
 
 .completion-year-badge:hover {
-    background-color: #f8f9fa;
-    border-color: #ced4da;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.15);
+    background-color: #f8f9fa !important;
+    border-color: #ced4da !important;
+    transform: translateY(-3px) scale(1.05) !important;
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.25) !important;
+}
+
+.completion-year-badge:active {
+    transform: translateY(-1px) scale(1.02) !important;
+    transition: transform 0.1s ease !important;
 }
 
 .completion-year-badge i {
