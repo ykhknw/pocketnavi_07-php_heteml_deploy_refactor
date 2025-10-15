@@ -60,6 +60,9 @@ class SecurityHeaders {
         $allowedValues = ['DENY', 'SAMEORIGIN'];
         if (in_array($value, $allowedValues)) {
             $this->headers['X-Frame-Options'] = $value;
+        } else {
+            // カスタム値の場合はそのまま設定（例: ALLOW-FROM uri）
+            $this->headers['X-Frame-Options'] = $value;
         }
         return $this;
     }
@@ -266,6 +269,9 @@ class SecurityHeaders {
             'child-src' => ["'self'"]
         ]);
         
+        // 本番環境用のX-Frame-Options設定（最も厳しい設定）
+        $this->setXFrameOptions('DENY');
+        
         // HSTSの有効化
         $this->setStrictTransportSecurity(31536000, true, true);
         
@@ -328,6 +334,9 @@ class SecurityHeaders {
             'media-src' => ["'self'"],
             'manifest-src' => ["'self'"]
         ]);
+        
+        // 開発環境用のX-Frame-Options設定（緩い設定）
+        $this->setXFrameOptions('SAMEORIGIN');
         
         // 開発環境用のPermissions-Policy設定
         $this->setPermissionsPolicy([
