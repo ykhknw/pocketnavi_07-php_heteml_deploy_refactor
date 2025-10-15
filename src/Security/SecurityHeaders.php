@@ -27,19 +27,16 @@ class SecurityHeaders {
         // Referrer-Policy
         $this->setReferrerPolicy('strict-origin-when-cross-origin');
         
-        // Permissions-Policy
+        // Permissions-Policy（標準的な機能のみ）
         $this->setPermissionsPolicy([
-            'geolocation' => '()',
-            'microphone' => '()',
-            'camera' => '()',
-            'payment' => '()',
-            'usb' => '()',
-            'magnetometer' => '()',
-            'gyroscope' => '()',
-            'speaker' => '()',
-            'vibrate' => '()',
-            'fullscreen' => '()',
-            'sync-xhr' => '()'
+            'geolocation' => [],
+            'microphone' => [],
+            'camera' => [],
+            'payment' => [],
+            'usb' => [],
+            'magnetometer' => [],
+            'gyroscope' => [],
+            'fullscreen' => []
         ]);
         
         // Content Security Policy
@@ -113,13 +110,25 @@ class SecurityHeaders {
         $policyStrings = [];
         foreach ($policies as $feature => $allowlist) {
             if (is_array($allowlist)) {
-                $allowlist = implode(' ', $allowlist);
+                // 空の配列の場合は空の括弧を設定（機能を無効化）
+                if (empty($allowlist)) {
+                    $allowlist = '';
+                } else {
+                    $allowlist = implode(' ', $allowlist);
+                }
+            } else {
+                // 空の文字列の場合は空の括弧を設定
+                if (empty($allowlist)) {
+                    $allowlist = '';
+                }
             }
-            // 空の場合は 'none' を設定
+            
+            // 空の場合は括弧のみ、値がある場合は値を括弧で囲む
             if (empty($allowlist)) {
-                $allowlist = 'none';
+                $policyStrings[] = $feature . '=()';
+            } else {
+                $policyStrings[] = $feature . '=(' . $allowlist . ')';
             }
-            $policyStrings[] = $feature . '=(' . $allowlist . ')';
         }
         
         $this->headers['Permissions-Policy'] = implode(', ', $policyStrings);
@@ -182,6 +191,11 @@ class SecurityHeaders {
         if (!empty($this->cspDirectives)) {
             $cspString = $this->buildCSPString();
             $this->headers['Content-Security-Policy'] = $cspString;
+            
+            // デバッグモードではCSP-Report-Onlyも送信
+            if (defined('DEBUG_MODE') && DEBUG_MODE) {
+                $this->headers['Content-Security-Policy-Report-Only'] = $cspString;
+            }
         }
         
         // ヘッダーの送信
@@ -210,24 +224,62 @@ class SecurityHeaders {
      * 本番環境用の設定（既存サイト対応）
      */
     public function setProductionMode() {
-        // 既存サイトとの互換性を保つCSP
+        // 既存サイトとの互換性を保つCSP（緊急対応版）
         $this->setContentSecurityPolicy([
             'default-src' => ["'self'"],
-            'script-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://www.googletagmanager.com"],
-            'style-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-            'img-src' => ["'self'", "data:", "https:"],
-            'font-src' => ["'self'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-            'connect-src' => ["'self'", "https://www.google-analytics.com", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+            'script-src' => [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com", 
+                "https://www.googletagmanager.com",
+                "https://www.google-analytics.com"
+            ],
+            'style-src' => [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com",
+                "https://fonts.googleapis.com"
+            ],
+            'img-src' => ["'self'", "data:", "https:", "http:"],
+            'font-src' => [
+                "'self'", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com",
+                "https://fonts.gstatic.com"
+            ],
+            'connect-src' => [
+                "'self'", 
+                "https://www.google-analytics.com", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com",
+                "https://analytics.google.com"
+            ],
             'frame-ancestors' => ["'none'"],
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],
             'object-src' => ["'none'"],
             'media-src' => ["'self'"],
-            'manifest-src' => ["'self'"]
+            'manifest-src' => ["'self'"],
+            'worker-src' => ["'self'"],
+            'child-src' => ["'self'"]
         ]);
         
         // HSTSの有効化
         $this->setStrictTransportSecurity(31536000, true, true);
+        
+        // 本番環境用のPermissions-Policy設定
+        $this->setPermissionsPolicy([
+            'geolocation' => [],
+            'microphone' => [],
+            'camera' => [],
+            'payment' => [],
+            'usb' => [],
+            'magnetometer' => [],
+            'gyroscope' => [],
+            'fullscreen' => []
+        ]);
         
         return $this;
     }
@@ -236,17 +288,57 @@ class SecurityHeaders {
      * 開発環境用の緩い設定
      */
     public function setDevelopmentMode() {
-        // 開発用の緩いCSP
+        // 開発用の緩いCSP（デバッグ対応）
         $this->setContentSecurityPolicy([
             'default-src' => ["'self'"],
-            'script-src' => ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://www.googletagmanager.com"],
-            'style-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-            'img-src' => ["'self'", "data:", "https:"],
-            'font-src' => ["'self'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-            'connect-src' => ["'self'", "https://www.google-analytics.com", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+            'script-src' => [
+                "'self'", 
+                "'unsafe-inline'", 
+                "'unsafe-eval'", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com", 
+                "https://www.googletagmanager.com",
+                "https://www.google-analytics.com"
+            ],
+            'style-src' => [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com",
+                "https://fonts.googleapis.com"
+            ],
+            'img-src' => ["'self'", "data:", "https:", "http:"],
+            'font-src' => [
+                "'self'", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com",
+                "https://fonts.gstatic.com"
+            ],
+            'connect-src' => [
+                "'self'", 
+                "https://www.google-analytics.com", 
+                "https://cdn.jsdelivr.net", 
+                "https://unpkg.com",
+                "https://analytics.google.com"
+            ],
             'frame-ancestors' => ["'self'"],
             'base-uri' => ["'self'"],
-            'form-action' => ["'self'"]
+            'form-action' => ["'self'"],
+            'object-src' => ["'none'"],
+            'media-src' => ["'self'"],
+            'manifest-src' => ["'self'"]
+        ]);
+        
+        // 開発環境用のPermissions-Policy設定
+        $this->setPermissionsPolicy([
+            'geolocation' => [],
+            'microphone' => [],
+            'camera' => [],
+            'payment' => [],
+            'usb' => [],
+            'magnetometer' => [],
+            'gyroscope' => [],
+            'fullscreen' => []
         ]);
         
         return $this;

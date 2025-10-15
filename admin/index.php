@@ -321,6 +321,28 @@ try {
                 </a>
             </div>
             
+            <!-- CSRFトークンデバッグ -->
+            <div class="col-lg-4 col-md-6">
+                <a href="csrf_debug.php" class="feature-card d-block">
+                    <div class="feature-icon">
+                        <i data-lucide="shield-check" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <h5>CSRFトークンデバッグ</h5>
+                    <p class="text-muted mb-0">CSRFトークンの状態確認とデバッグ。セキュリティ機能の動作確認。</p>
+                </a>
+            </div>
+            
+            <!-- SameSite Cookieデバッグ -->
+            <div class="col-lg-4 col-md-6">
+                <a href="samesite_cookie_debug.php" class="feature-card d-block">
+                    <div class="feature-icon">
+                        <i data-lucide="cookie" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <h5>SameSite Cookieデバッグ</h5>
+                    <p class="text-muted mb-0">SameSite Cookieの状態確認とデバッグ。Cookie設定の動作確認。</p>
+                </a>
+            </div>
+            
             <!-- 人気検索ワードキャッシュ管理 -->
             <div class="col-lg-4 col-md-6">
                 <a href="cache_management.php" class="feature-card d-block">

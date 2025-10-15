@@ -1,14 +1,34 @@
 <?php
 /**
- * 検索結果件数取得API
- * フィルター変更時の動的件数更新用
+ * Search Count API Endpoint
+ * 
+ * 検索結果件数を動的に取得するAPIエンドポイント
+ * CSRFトークンによる保護を実装
+ * 
+ * @package PocketNavi
+ * @subpackage API
  */
 
-// CORS設定
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json; charset=utf-8');
+// エラーレポートを有効化（開発環境のみ）
+$isProduction = !isset($_SERVER['HTTP_HOST']) || $_SERVER['HTTP_HOST'] !== 'localhost';
+if (!$isProduction) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
+
+// 必要なファイルを読み込み
+require_once __DIR__ . '/../src/Utils/CSRFHelper.php';
+
+// JSONレスポンス用のヘッダーを設定
+header('Content-Type: application/json');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+
+// CORS設定（必要に応じて）
+header('Access-Control-Allow-Origin: ' . ($_SERVER['HTTP_ORIGIN'] ?? '*'));
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-CSRF-Token');
 
 // OPTIONSリクエストの処理
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -16,90 +36,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// POSTリクエストのみ受け付け
+// POSTリクエストのみ許可
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Method not allowed',
+        'error_code' => 'METHOD_NOT_ALLOWED'
+    ]);
+    exit;
+}
+
+// CSRFトークンの検証
+if (!validateAjaxCSRFToken('search')) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'error' => 'CSRF token validation failed',
+        'error_code' => 'CSRF_TOKEN_INVALID'
+    ]);
     exit;
 }
 
 try {
-    // リクエストボディの取得
-    $input = file_get_contents('php://input');
-    $searchParams = json_decode($input, true);
+    // リクエストボディを取得
+    $input = json_decode(file_get_contents('php://input'), true);
     
-    if (!$searchParams) {
+    if (!$input) {
         throw new Exception('Invalid JSON input');
     }
     
-    // 必要なファイルの読み込み
-    require_once __DIR__ . '/../src/Utils/DatabaseConnection.php';
-    require_once __DIR__ . '/../src/Services/BuildingService.php';
-    require_once __DIR__ . '/../src/Views/includes/functions.php';
+    // 検索パラメータを取得
+    $query = $input['query'] ?? '';
+    $prefectures = $input['prefectures'] ?? [];
+    $architectsSlug = $input['architectsSlug'] ?? '';
+    $completionYears = $input['completionYears'] ?? '';
+    $hasPhotos = $input['hasPhotos'] ?? false;
+    $hasVideos = $input['hasVideos'] ?? false;
+    $userLat = $input['userLat'] ?? null;
+    $userLng = $input['userLng'] ?? null;
+    $radiusKm = $input['radiusKm'] ?? 10;
     
     // データベース接続
-    $db = DatabaseConnection::getInstance();
+    require_once __DIR__ . '/../config/database_unified.php';
+    $db = getDB();
     
-    // BuildingServiceの初期化
-    $buildingService = new BuildingService($db);
-    
-    // 検索パラメータの正規化
-    $query = $searchParams['q'] ?? '';
-    $prefectures = $searchParams['prefectures'] ?? '';
-    $completionYears = $searchParams['completionYears'] ?? '';
-    $hasPhotos = isset($searchParams['hasPhotos']) && $searchParams['hasPhotos'] !== '';
-    $hasVideos = isset($searchParams['hasVideos']) && $searchParams['hasVideos'] !== '';
-    $userLat = $searchParams['userLat'] ?? null;
-    $userLng = $searchParams['userLng'] ?? null;
-    $radiusKm = $searchParams['radiusKm'] ?? 10;
-    $lang = $searchParams['lang'] ?? 'ja';
-    
-    // 配列の正規化
-    if (is_string($prefectures) && !empty($prefectures)) {
-        $prefectures = [$prefectures];
-    }
-    if (is_string($completionYears) && !empty($completionYears)) {
-        $completionYears = [$completionYears];
+    if (!$db) {
+        throw new Exception('Database connection failed');
     }
     
-    // 検索実行（件数のみ取得）
-    $searchResult = $buildingService->searchBuildingsWithMultipleConditions(
-        $query,
-        $prefectures,
-        $completionYears,
-        $hasPhotos,
-        $hasVideos,
-        $userLat,
-        $userLng,
-        $radiusKm,
-        1, // ページ番号
-        $lang,
-        1  // 1件のみ取得（件数確認用）
-    );
+    // 検索クエリを構築
+    $whereConditions = [];
+    $params = [];
     
-    // 結果の返却
-    $response = [
+    // キーワード検索
+    if (!empty($query)) {
+        $whereConditions[] = "(title LIKE ? OR description LIKE ? OR location LIKE ?)";
+        $searchTerm = "%{$query}%";
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+    }
+    
+    // 都道府県フィルター
+    if (!empty($prefectures) && is_array($prefectures)) {
+        $placeholders = str_repeat('?,', count($prefectures) - 1) . '?';
+        $whereConditions[] = "prefecture IN ({$placeholders})";
+        $params = array_merge($params, $prefectures);
+    }
+    
+    // 建築家フィルター
+    if (!empty($architectsSlug)) {
+        $whereConditions[] = "architect_slug = ?";
+        $params[] = $architectsSlug;
+    }
+    
+    // 完成年フィルター
+    if (!empty($completionYears)) {
+        $whereConditions[] = "completion_year = ?";
+        $params[] = $completionYears;
+    }
+    
+    // 写真フィルター
+    if ($hasPhotos) {
+        $whereConditions[] = "has_photo = 1";
+    }
+    
+    // 動画フィルター
+    if ($hasVideos) {
+        $whereConditions[] = "has_video = 1";
+    }
+    
+    // 地理的検索
+    if ($userLat !== null && $userLng !== null && $radiusKm > 0) {
+        $whereConditions[] = "(
+            6371 * acos(
+                cos(radians(?)) * cos(radians(latitude)) * 
+                cos(radians(longitude) - radians(?)) + 
+                sin(radians(?)) * sin(radians(latitude))
+            )
+        ) <= ?";
+        $params[] = $userLat;
+        $params[] = $userLng;
+        $params[] = $userLat;
+        $params[] = $radiusKm;
+    }
+    
+    // WHERE句を構築
+    $whereClause = '';
+    if (!empty($whereConditions)) {
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+    }
+    
+    // 件数を取得
+    $countQuery = "SELECT COUNT(*) as count FROM buildings_table_3 {$whereClause}";
+    $stmt = $db->prepare($countQuery);
+    
+    if (!$stmt) {
+        throw new Exception('Failed to prepare count query: ' . $db->error);
+    }
+    
+    if (!empty($params)) {
+        $stmt->bind_param(str_repeat('s', count($params)), ...$params);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $count = $row['count'] ?? 0;
+    
+    $stmt->close();
+    
+    // 成功レスポンス
+    echo json_encode([
         'success' => true,
-        'count' => $searchResult['total'],
-        'query' => $query,
-        'prefectures' => $prefectures,
-        'completionYears' => $completionYears,
-        'hasPhotos' => $hasPhotos,
-        'hasVideos' => $hasVideos
-    ];
-    
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+        'count' => (int)$count,
+        'timestamp' => time()
+    ]);
     
 } catch (Exception $e) {
-    // エラーログの記録
+    // エラーログを記録
     error_log("Search count API error: " . $e->getMessage());
     
     // エラーレスポンス
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Internal server error',
-        'message' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+        'error' => $isProduction ? 'Internal server error' : $e->getMessage(),
+        'error_code' => 'INTERNAL_ERROR'
+    ]);
 }
 ?>

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
+    <!-- CSRF Token -->
+    <?php echo csrfTokenMeta('search'); ?>
+    
     <!-- SEO Meta Tags -->
     <title><?php echo htmlspecialchars($seoData['title'] ?? 'PocketNavi - 建築物検索'); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($seoData['description'] ?? '建築物を検索できるサイト'); ?>">
@@ -21,6 +24,100 @@
     <!-- Favicon -->
     <link rel="icon" href="/assets/images/landmark.svg" type="image/svg+xml">
 
+<!-- 早期エラーフィルタリング（最優先） -->
+<script>
+(function() {
+    // 外部スクリプトエラーのフィルタリング（最早期版）
+    window.addEventListener('error', function(event) {
+        // 外部ブラウザ拡張機能のエラーを無視
+        if (event.filename && (
+            event.filename.includes('content.js') ||
+            event.filename.includes('inject.js') ||
+            event.filename.includes('main.js') ||
+            event.filename.includes('chrome-extension://') ||
+            event.filename.includes('moz-extension://') ||
+            event.filename.includes('safari-extension://') ||
+            event.filename.includes('extension://')
+        )) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+        
+        // 特定のエラーメッセージを無視
+        if (event.message && (
+            event.message.includes('priceAreaElement is not defined') ||
+            event.message.includes('Photo gallery card not found') ||
+            event.message.includes('document.write()') ||
+            event.message.includes('Avoid using document.write()') ||
+            event.message.includes('Port connected')
+        )) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+    });
+    
+    // コンソール出力のフィルタリング（強化版）
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    const originalLog = console.log;
+    const originalInfo = console.info;
+    
+    function shouldFilterMessage(message) {
+        return message.includes('Avoid using document.write()') ||
+               message.includes('document.write()') ||
+               message.includes('Port connected') ||
+               message.includes('コンテンツスクリプト実行中') ||
+               message.includes('priceAreaElement is not defined') ||
+               message.includes('Photo gallery card not found') ||
+               message.includes('Initializing photo gallery') ||
+               message.includes('MetaMask encountered an error') ||
+               message.includes('Cannot set property ethereum') ||
+               message.includes('Cannot redefine property: ethereum') ||
+               message.includes('Could not establish connection') ||
+               message.includes('Receiving end does not exist') ||
+               message.includes('inpage.js') ||
+               message.includes('evmAsk.js') ||
+               message.includes('content.js') ||
+               message.includes('inject.js') ||
+               message.includes('main.js');
+    }
+    
+    console.warn = function(...args) {
+        const message = args.join(' ');
+        if (shouldFilterMessage(message)) {
+            return;
+        }
+        originalWarn.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+        const message = args.join(' ');
+        if (shouldFilterMessage(message)) {
+            return;
+        }
+        originalError.apply(console, args);
+    };
+    
+    console.log = function(...args) {
+        const message = args.join(' ');
+        if (shouldFilterMessage(message)) {
+            return;
+        }
+        originalLog.apply(console, args);
+    };
+    
+    console.info = function(...args) {
+        const message = args.join(' ');
+        if (shouldFilterMessage(message)) {
+            return;
+        }
+        originalInfo.apply(console, args);
+    };
+})();
+</script>
+
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-9FY04VHM17"></script>
 <script>
@@ -29,6 +126,57 @@
   gtag('js', new Date());
 
   gtag('config', 'G-9FY04VHM17');
+</script>
+
+<!-- CSRFManager（本番環境用） -->
+<script>
+// CSRFトークン管理（本番環境用）
+if (typeof CSRFManager === 'undefined') {
+    class CSRFManager {
+        static getToken() {
+            const metaTag = document.querySelector('meta[name="csrf-token"]');
+            return metaTag ? metaTag.getAttribute('content') : null;
+        }
+        
+        static addToRequest(options = {}) {
+            const token = this.getToken();
+            if (!token) return options;
+            
+            // ヘッダーに追加
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['X-CSRF-Token'] = token;
+            
+            // POSTデータに追加
+            if (options.method && options.method.toUpperCase() === 'POST') {
+                if (!options.body) {
+                    options.body = new FormData();
+                }
+                if (options.body instanceof FormData) {
+                    options.body.append('csrf_token', token);
+                } else if (typeof options.body === 'string') {
+                    try {
+                        const data = JSON.parse(options.body);
+                        data.csrf_token = token;
+                        options.body = JSON.stringify(data);
+                    } catch (e) {
+                        // JSONでない場合はFormDataに変換
+                        const formData = new FormData();
+                        formData.append('csrf_token', token);
+                        formData.append('data', options.body);
+                        options.body = formData;
+                    }
+                }
+            }
+            
+            return options;
+        }
+    }
+    
+    // グローバルに公開
+    window.CSRFManager = CSRFManager;
+}
 </script>
 
 </head>

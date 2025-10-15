@@ -8,11 +8,18 @@
 $isProduction = !isset($_GET['debug']); // デバッグモードでない場合は本番環境
 define('DEBUG_MODE', isset($_GET['debug'])); // デバッグパラメータがある場合はデバッグモード
 
-// セキュリティヘッダーの設定（一時的に無効化）
-if (file_exists(__DIR__ . '/src/Security/SecurityHeaders.php') && false) {
+// セキュリティヘッダーの設定（本番環境で有効化）
+if (file_exists(__DIR__ . '/src/Security/SecurityHeaders.php')) {
     require_once __DIR__ . '/src/Security/SecurityHeaders.php';
     $securityHeaders = new SecurityHeaders();
-    $securityHeaders->setProductionMode();
+    
+    // 本番環境では本番モード、開発環境では開発モード
+    if ($isProduction) {
+        $securityHeaders->setProductionMode();
+    } else {
+        $securityHeaders->setDevelopmentMode();
+    }
+    
     $securityHeaders->sendHeaders();
 }
 
@@ -161,10 +168,15 @@ if (!headers_sent()) {
 $functionsLoaded = false;
 try {
     require_once 'src/Views/includes/functions.php';
+    require_once 'src/Utils/CSRFHelper.php';
+    require_once 'src/Utils/SameSiteCookieHelper.php';
     $functionsLoaded = true;
     if (!$isProduction) {
         error_log("Functions.php loaded successfully");
     }
+    
+    // SameSite Cookie設定を初期化
+    startSecureSession();
     
     // functions.php読み込み後、確実に正しいデータベース接続を使用
     if (isset($GLOBALS['pocketnavi_db_connection'])) {
@@ -692,8 +704,18 @@ class PocketNaviSafeApp {
         <!DOCTYPE html>
         <html lang="<?php echo $lang; ?>">
         <head>
+
+
+<!-- CSRF Token -->
+<?php echo csrfTokenMeta('search'); ?>
+
+
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" value="0">
+            <!-- CSRF Token -->
+            <?php echo csrfTokenMeta('search'); ?>
+            <!-- SameSite Cookie Debug Info -->
+            <?php echo getSameSiteCookieInfoHTML(); ?>
             <!-- SEO Meta Tags -->
             <?php if (!empty($seoData)): ?>
                 <title><?php echo htmlspecialchars($seoData['title'] ?? 'PocketNavi - 建築物検索'); ?></title>
@@ -754,6 +776,79 @@ class PocketNaviSafeApp {
             <link rel="stylesheet" href="/assets/css/style.css">
             <link rel="icon" href="/assets/images/landmark.svg" type="image/svg+xml">
 
+<!-- 早期エラーフィルタリング（最優先） -->
+<script>
+(function() {
+    // 外部スクリプトエラーのフィルタリング（最早期版）
+    window.addEventListener('error', function(event) {
+        // 外部ブラウザ拡張機能のエラーを無視
+        if (event.filename && (
+            event.filename.includes('content.js') ||
+            event.filename.includes('inject.js') ||
+            event.filename.includes('main.js') ||
+            event.filename.includes('chrome-extension://') ||
+            event.filename.includes('moz-extension://') ||
+            event.filename.includes('safari-extension://') ||
+            event.filename.includes('extension://')
+        )) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+        
+        // 特定のエラーメッセージを無視
+        if (event.message && (
+            event.message.includes('priceAreaElement is not defined') ||
+            event.message.includes('Photo gallery card not found') ||
+            event.message.includes('document.write()') ||
+            event.message.includes('Avoid using document.write()') ||
+            event.message.includes('Port connected')
+        )) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+    });
+    
+    // コンソール出力のフィルタリング（最早期版）
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    const originalLog = console.log;
+    
+    console.warn = function(...args) {
+        const message = args.join(' ');
+        if (message.includes('Avoid using document.write()') ||
+            message.includes('document.write()') ||
+            message.includes('Port connected') ||
+            message.includes('コンテンツスクリプト実行中')) {
+            return;
+        }
+        originalWarn.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+        const message = args.join(' ');
+        if (message.includes('priceAreaElement is not defined') ||
+            message.includes('Photo gallery card not found') ||
+            message.includes('Port connected') ||
+            message.includes('コンテンツスクリプト実行中')) {
+            return;
+        }
+        originalError.apply(console, args);
+    };
+    
+    console.log = function(...args) {
+        const message = args.join(' ');
+        if (message.includes('Port connected') ||
+            message.includes('コンテンツスクリプト実行中') ||
+            message.includes('Initializing photo gallery')) {
+            return;
+        }
+        originalLog.apply(console, args);
+    };
+})();
+</script>
+
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-9FY04VHM17"></script>
 <script>
@@ -766,6 +861,49 @@ class PocketNaviSafeApp {
 
 <!-- 動的件数更新用のJavaScript -->
 <script>
+// CSRFトークン管理
+class CSRFManager {
+    static getToken() {
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        return metaTag ? metaTag.getAttribute('content') : null;
+    }
+    
+    static addToRequest(options = {}) {
+        const token = this.getToken();
+        if (!token) return options;
+        
+        // ヘッダーに追加
+        if (!options.headers) {
+            options.headers = {};
+        }
+        options.headers['X-CSRF-Token'] = token;
+        
+        // POSTデータに追加
+        if (options.method && options.method.toUpperCase() === 'POST') {
+            if (!options.body) {
+                options.body = new FormData();
+            }
+            if (options.body instanceof FormData) {
+                options.body.append('csrf_token', token);
+            } else if (typeof options.body === 'string') {
+                try {
+                    const data = JSON.parse(options.body);
+                    data.csrf_token = token;
+                    options.body = JSON.stringify(data);
+                } catch (e) {
+                    // JSONでない場合はFormDataに変換
+                    const formData = new FormData();
+                    formData.append('csrf_token', token);
+                    formData.append('data', options.body);
+                    options.body = formData;
+                }
+            }
+        }
+        
+        return options;
+    }
+}
+
 // 検索結果件数の動的更新機能
 class SearchResultsUpdater {
     constructor() {
@@ -847,14 +985,16 @@ class SearchResultsUpdater {
             // 現在の検索パラメータを取得
             const searchParams = this.getCurrentSearchParams();
             
-            // APIエンドポイントにリクエスト
-            const response = await fetch('/api/search-count.php', {
+            // APIエンドポイントにリクエスト（CSRFトークン付き）
+            const requestOptions = CSRFManager.addToRequest({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(searchParams)
             });
+            
+            const response = await fetch('/api/search-count.php', requestOptions);
             
             if (response.ok) {
                 const data = await response.json();
@@ -1293,6 +1433,97 @@ document.head.appendChild(rippleStyle);
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
             <script>
+                // 外部スクリプトエラーのフィルタリング（強化版）
+                window.addEventListener('error', function(event) {
+                    // 外部ブラウザ拡張機能のエラーを無視
+                    if (event.filename && (
+                        event.filename.includes('content.js') ||
+                        event.filename.includes('inject.js') ||
+                        event.filename.includes('main.js') ||
+                        event.filename.includes('chrome-extension://') ||
+                        event.filename.includes('moz-extension://') ||
+                        event.filename.includes('safari-extension://') ||
+                        event.filename.includes('extension://')
+                    )) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }
+                    
+                    // 特定のエラーメッセージを無視
+                    if (event.message && (
+                        event.message.includes('priceAreaElement is not defined') ||
+                        event.message.includes('Photo gallery card not found') ||
+                        event.message.includes('document.write()') ||
+                        event.message.includes('Avoid using document.write()') ||
+                        event.message.includes('Port connected')
+                    )) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }
+                    
+                    // エラーのソースが外部拡張機能の場合は無視
+                    if (event.target && event.target.tagName === 'SCRIPT' && 
+                        event.target.src && (
+                            event.target.src.includes('chrome-extension://') ||
+                            event.target.src.includes('moz-extension://') ||
+                            event.target.src.includes('safari-extension://')
+                        )) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }
+                });
+                
+                // 未処理のPromise拒否エラーをフィルタリング
+                window.addEventListener('unhandledrejection', function(event) {
+                    if (event.reason && event.reason.message && (
+                        event.reason.message.includes('priceAreaElement is not defined') ||
+                        event.reason.message.includes('Photo gallery card not found')
+                    )) {
+                        event.preventDefault();
+                        return false;
+                    }
+                });
+                
+                // コンソール警告のフィルタリング（強化版）
+                const originalWarn = console.warn;
+                const originalError = console.error;
+                const originalLog = console.log;
+                
+                console.warn = function(...args) {
+                    const message = args.join(' ');
+                    if (message.includes('Avoid using document.write()') ||
+                        message.includes('document.write()') ||
+                        message.includes('Port connected') ||
+                        message.includes('コンテンツスクリプト実行中')) {
+                        return; // 警告を無視
+                    }
+                    originalWarn.apply(console, args);
+                };
+                
+                console.error = function(...args) {
+                    const message = args.join(' ');
+                    if (message.includes('priceAreaElement is not defined') ||
+                        message.includes('Photo gallery card not found') ||
+                        message.includes('Port connected') ||
+                        message.includes('コンテンツスクリプト実行中')) {
+                        return; // エラーを無視
+                    }
+                    originalError.apply(console, args);
+                };
+                
+                console.log = function(...args) {
+                    const message = args.join(' ');
+                    if (message.includes('Port connected') ||
+                        message.includes('コンテンツスクリプト実行中') ||
+                        message.includes('Initializing photo gallery')) {
+                        return; // ログを無視
+                    }
+                    originalLog.apply(console, args);
+                };
+                
                 document.addEventListener("DOMContentLoaded", () => {
                     lucide.createIcons();
                 });

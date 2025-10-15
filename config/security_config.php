@@ -37,20 +37,46 @@ return [
         'hsts_preload' => true
     ],
     
-    // Content Security Policy設定（既存サイト対応）
+    // Content Security Policy設定（緊急対応版）
     'csp' => [
         'default_src' => ["'self'"],
-        'script_src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://www.googletagmanager.com"],
-        'style_src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-        'img_src' => ["'self'", "data:", "https:"],
-        'font_src' => ["'self'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-        'connect_src' => ["'self'", "https://www.google-analytics.com", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+        'script_src' => [
+            "'self'", 
+            "'unsafe-inline'", 
+            "https://cdn.jsdelivr.net", 
+            "https://unpkg.com", 
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com"
+        ],
+        'style_src' => [
+            "'self'", 
+            "'unsafe-inline'", 
+            "https://cdn.jsdelivr.net", 
+            "https://unpkg.com",
+            "https://fonts.googleapis.com"
+        ],
+        'img_src' => ["'self'", "data:", "https:", "http:"],
+        'font_src' => [
+            "'self'", 
+            "https://cdn.jsdelivr.net", 
+            "https://unpkg.com",
+            "https://fonts.gstatic.com"
+        ],
+        'connect_src' => [
+            "'self'", 
+            "https://www.google-analytics.com", 
+            "https://cdn.jsdelivr.net", 
+            "https://unpkg.com",
+            "https://analytics.google.com"
+        ],
         'frame_ancestors' => ["'none'"],
         'base_uri' => ["'self'"],
         'form_action' => ["'self'"],
         'object_src' => ["'none'"],
         'media_src' => ["'self'"],
-        'manifest_src' => ["'self'"]
+        'manifest_src' => ["'self'"],
+        'worker_src' => ["'self'"],
+        'child_src' => ["'self'"]
     ],
     
     // 入力検証設定
