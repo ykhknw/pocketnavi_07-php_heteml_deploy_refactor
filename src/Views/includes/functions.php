@@ -1,11 +1,59 @@
 <?php
-// 統合された共通関数ファイル
+// 統合された共通関数ファイル - セキュリティ強化版
 
 // クラスファイルを読み込み
 //require_once __DIR__ . '/../../Utils/Database.php';
 require_once __DIR__ . '/../../Services/BuildingService.php';
 require_once __DIR__ . '/../../Services/ArchitectService.php';
 require_once __DIR__ . '/../../Utils/ErrorHandler.php';
+
+// 入力検証クラスの読み込み
+if (file_exists(__DIR__ . '/../../Security/InputValidator.php')) {
+    require_once __DIR__ . '/../../Security/InputValidator.php';
+}
+
+/**
+ * セキュアな入力検証関数
+ */
+function secureValidateInput($input, $type = 'string', $options = []) {
+    if (!class_exists('InputValidator')) {
+        // フォールバック: 基本的なサニタイズ
+        return htmlspecialchars($input, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+    
+    $validator = new InputValidator();
+    
+    switch ($type) {
+        case 'string':
+            return $validator->validateString($input, 'input', $options);
+        case 'integer':
+            return $validator->validateInteger($input, 'input', $options);
+        case 'email':
+            return $validator->validateEmail($input, 'input', $options['required'] ?? false);
+        case 'url':
+            return $validator->validateURL($input, 'input', $options['required'] ?? false);
+        case 'sql_safe':
+            return $validator->validateSQLSafe($input, 'input', $type);
+        default:
+            return $validator->validateString($input, 'input', $options);
+    }
+}
+
+/**
+ * セキュアなGETパラメータ取得
+ */
+function secureGetParam($key, $default = '', $type = 'string', $options = []) {
+    $value = $_GET[$key] ?? $default;
+    return secureValidateInput($value, $type, $options);
+}
+
+/**
+ * セキュアなPOSTパラメータ取得
+ */
+function securePostParam($key, $default = '', $type = 'string', $options = []) {
+    $value = $_POST[$key] ?? $default;
+    return secureValidateInput($value, $type, $options);
+}
 
 
 

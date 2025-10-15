@@ -1,8 +1,23 @@
 <?php
 /**
- * 簡易キャッシュ管理画面
+ * 簡易キャッシュ管理画面 - セキュリティ強化版
  * 本番環境用（依存関係を最小限に）
  */
+
+// セキュリティヘッダーの設定
+if (file_exists(__DIR__ . '/../src/Security/SecurityHeaders.php')) {
+    require_once __DIR__ . '/../src/Security/SecurityHeaders.php';
+    $securityHeaders = new SecurityHeaders();
+    $securityHeaders->setProductionMode();
+    $securityHeaders->sendHeaders();
+}
+
+// セキュアエラーハンドリングの設定
+if (file_exists(__DIR__ . '/../src/Security/SecureErrorHandler.php')) {
+    require_once __DIR__ . '/../src/Security/SecureErrorHandler.php';
+    $isProduction = !isset($_GET['debug']);
+    $errorHandler = new SecureErrorHandler($isProduction);
+}
 
 // セキュリティ: 簡易認証
 $adminPassword = 'yuki11'; // 本番環境では強力なパスワードに変更

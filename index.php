@@ -1,16 +1,26 @@
 <?php
 /**
- * PocketNavi PHP版 - 安全版リファクタリング
- * クラス重複エラーを回避し、既存システムとの互換性を保つ
+ * PocketNavi PHP版 - セキュリティ強化版
+ * Phase 1: 緊急対応セキュリティ強化
  */
 
-// エラーレポートの設定（本番環境用）
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-
 // 本番環境でのログ設定
-$isProduction = true; // 本番環境では true に設定
-define('DEBUG_MODE', false); // 本番環境では false に設定
+$isProduction = !isset($_GET['debug']); // デバッグモードでない場合は本番環境
+define('DEBUG_MODE', isset($_GET['debug'])); // デバッグパラメータがある場合はデバッグモード
+
+// セキュリティヘッダーの設定（一時的に無効化）
+if (file_exists(__DIR__ . '/src/Security/SecurityHeaders.php') && false) {
+    require_once __DIR__ . '/src/Security/SecurityHeaders.php';
+    $securityHeaders = new SecurityHeaders();
+    $securityHeaders->setProductionMode();
+    $securityHeaders->sendHeaders();
+}
+
+// セキュアエラーハンドリングの設定（一時的に無効化）
+if (file_exists(__DIR__ . '/src/Security/SecureErrorHandler.php') && false) {
+    require_once __DIR__ . '/src/Security/SecureErrorHandler.php';
+    $errorHandler = new SecureErrorHandler($isProduction);
+}
 
 // ============================================================================
 // 環境変数と.envファイルの読み込み
@@ -98,7 +108,7 @@ if (!$isProduction) {
 
 // データベース接続関数（既存のfunctions.phpより先に定義）
 function getDB() {
-    global $dbConfig;
+    global $dbConfig, $isProduction;
     
     static $pdo = null;
     
@@ -548,14 +558,54 @@ class PocketNaviSafeApp {
         $popularSearches = $this->popularSearches;
         $lang = $this->lang;
         
-        // 環境変数からSEOデータを取得
-        $seoData = [
-            'title' => $_ENV['APP_TITLE'] ?? getenv('APP_TITLE') ?? 'PocketNavi - 建築物検索',
-            'description' => $_ENV['APP_DESCRIPTION'] ?? getenv('APP_DESCRIPTION') ?? '建築物を検索できるサイト',
-            'keywords' => $_ENV['APP_KEYWORDS'] ?? getenv('APP_KEYWORDS') ?? '建築物,検索,建築家'
-        ];
-        
+        // SEOメタタグの生成
+        $pageType = 'home';
+        $seoData = [];
         $structuredData = [];
+        
+        // SEOHelperクラスの読み込み
+        if (file_exists(__DIR__ . '/src/Utils/SEOHelper.php')) {
+            require_once __DIR__ . '/src/Utils/SEOHelper.php';
+            
+            if ($buildingSlug && $currentBuilding) {
+                // 建築物ページ
+                $pageType = 'building';
+                $seoData = SEOHelper::generateMetaTags('building', $currentBuilding, $lang);
+                $structuredData = SEOHelper::generateStructuredData('building', $currentBuilding, $lang);
+            } elseif ($architectsSlug && $architectInfo) {
+                // 建築家ページ
+                $pageType = 'architect';
+                $architectInfo['building_count'] = count($buildings);
+                $seoData = SEOHelper::generateMetaTags('architect', $architectInfo, $lang);
+                $structuredData = SEOHelper::generateStructuredData('architect', $architectInfo, $lang);
+            } elseif (!empty($query) || !empty($prefectures) || !empty($completionYears) || $hasPhotos || $hasVideos) {
+                // 検索結果ページ
+                $pageType = 'search';
+                $searchData = [
+                    'query' => $query,
+                    'total' => $totalBuildings,
+                    'currentPage' => $currentPage,
+                    'prefectures' => $prefectures,
+                    'completionYears' => $completionYears,
+                    'hasPhotos' => $hasPhotos,
+                    'hasVideos' => $hasVideos
+                ];
+                $seoData = SEOHelper::generateMetaTags('search', $searchData, $lang);
+                $structuredData = SEOHelper::generateStructuredData('search', $searchData, $lang);
+            } else {
+                // ホームページ
+                $pageType = 'home';
+                $seoData = SEOHelper::generateMetaTags('home', [], $lang);
+                $structuredData = SEOHelper::generateStructuredData('home', [], $lang);
+            }
+        } else {
+            // SEOHelperが存在しない場合のフォールバック
+            $seoData = [
+                'title' => 'PocketNavi - 建築物検索',
+                'description' => '建築物を検索できるサイト',
+                'keywords' => '建築物,検索,建築家'
+            ];
+        }
         
         // キャッシュ統計情報
         $cacheStats = $this->getCacheStats();
@@ -644,13 +694,271 @@ class PocketNaviSafeApp {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title><?php echo htmlspecialchars($seoData['title']); ?></title>
-            <meta name="description" content="<?php echo htmlspecialchars($seoData['description']); ?>">
+            <!-- SEO Meta Tags -->
+            <?php if (!empty($seoData)): ?>
+                <title><?php echo htmlspecialchars($seoData['title'] ?? 'PocketNavi - 建築物検索'); ?></title>
+                <meta name="description" content="<?php echo htmlspecialchars($seoData['description'] ?? '建築物を検索できるサイト'); ?>">
+                <meta name="keywords" content="<?php echo htmlspecialchars($seoData['keywords'] ?? '建築物,検索,建築家'); ?>">
+                
+                <!-- Open Graph Tags -->
+                <?php if (isset($seoData['og_title'])): ?>
+                    <meta property="og:title" content="<?php echo htmlspecialchars($seoData['og_title']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['og_description'])): ?>
+                    <meta property="og:description" content="<?php echo htmlspecialchars($seoData['og_description']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['og_image'])): ?>
+                    <meta property="og:image" content="<?php echo htmlspecialchars($seoData['og_image']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['og_url'])): ?>
+                    <meta property="og:url" content="<?php echo htmlspecialchars($seoData['og_url']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['og_type'])): ?>
+                    <meta property="og:type" content="<?php echo htmlspecialchars($seoData['og_type']); ?>">
+                <?php endif; ?>
+                <meta property="og:site_name" content="PocketNavi">
+                
+                <!-- Twitter Card Tags -->
+                <?php if (isset($seoData['twitter_card'])): ?>
+                    <meta name="twitter:card" content="<?php echo htmlspecialchars($seoData['twitter_card']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['twitter_title'])): ?>
+                    <meta name="twitter:title" content="<?php echo htmlspecialchars($seoData['twitter_title']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['twitter_description'])): ?>
+                    <meta name="twitter:description" content="<?php echo htmlspecialchars($seoData['twitter_description']); ?>">
+                <?php endif; ?>
+                <?php if (isset($seoData['twitter_image'])): ?>
+                    <meta name="twitter:image" content="<?php echo htmlspecialchars($seoData['twitter_image']); ?>">
+                <?php endif; ?>
+                
+                <!-- Canonical URL -->
+                <?php if (isset($seoData['canonical'])): ?>
+                    <link rel="canonical" href="<?php echo htmlspecialchars($seoData['canonical']); ?>">
+                <?php endif; ?>
+            <?php else: ?>
+                <title>PocketNavi - 建築物検索</title>
+                <meta name="description" content="建築物を検索できるサイト">
+                <meta name="keywords" content="建築物,検索,建築家">
+            <?php endif; ?>
+            
+            <!-- Structured Data (JSON-LD) -->
+            <?php if (!empty($structuredData)): ?>
+                <script type="application/ld+json">
+                <?php echo json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+                </script>
+            <?php endif; ?>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <script src="https://unpkg.com/lucide@latest"></script>
             <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
             <link rel="stylesheet" href="/assets/css/style.css">
             <link rel="icon" href="/assets/images/landmark.svg" type="image/svg+xml">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-9FY04VHM17"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-9FY04VHM17');
+</script>
+
+<!-- 動的件数更新用のJavaScript -->
+<script>
+// 検索結果件数の動的更新機能
+class SearchResultsUpdater {
+    constructor() {
+        this.updateTimeout = null;
+        this.isUpdating = false;
+        this.init();
+    }
+    
+    init() {
+        // フィルター変更イベントの監視
+        this.observeFilterChanges();
+        // 検索フォームの監視
+        this.observeSearchForm();
+    }
+    
+    // フィルター変更の監視
+    observeFilterChanges() {
+        // 都道府県選択の監視
+        const prefectureSelects = document.querySelectorAll('select[name="prefectures[]"], select[name="prefectures"]');
+        prefectureSelects.forEach(select => {
+            select.addEventListener('change', () => {
+                this.scheduleUpdate();
+            });
+        });
+        
+        // 完成年選択の監視
+        const yearSelects = document.querySelectorAll('select[name="completionYears[]"], select[name="completionYears"]');
+        yearSelects.forEach(select => {
+            select.addEventListener('change', () => {
+                this.scheduleUpdate();
+            });
+        });
+        
+        // 写真・動画チェックボックスの監視
+        const photoCheckbox = document.querySelector('input[name="hasPhotos"]');
+        if (photoCheckbox) {
+            photoCheckbox.addEventListener('change', () => {
+                this.scheduleUpdate();
+            });
+        }
+        
+        const videoCheckbox = document.querySelector('input[name="hasVideos"]');
+        if (videoCheckbox) {
+            videoCheckbox.addEventListener('change', () => {
+                this.scheduleUpdate();
+            });
+        }
+    }
+    
+    // 検索フォームの監視
+    observeSearchForm() {
+        const searchInput = document.querySelector('input[name="q"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                this.scheduleUpdate();
+            });
+        }
+    }
+    
+    // 更新のスケジュール（デバウンス）
+    scheduleUpdate() {
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+        }
+        
+        this.updateTimeout = setTimeout(() => {
+            this.updateResultsCount();
+        }, 500); // 500ms後に実行
+    }
+    
+    // 検索結果件数の更新
+    async updateResultsCount() {
+        if (this.isUpdating) return;
+        
+        this.isUpdating = true;
+        this.showLoadingState();
+        
+        try {
+            // 現在の検索パラメータを取得
+            const searchParams = this.getCurrentSearchParams();
+            
+            // APIエンドポイントにリクエスト
+            const response = await fetch('/api/search-count.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(searchParams)
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    this.updateResultsDisplay(data.count);
+                } else {
+                    console.error('API returned error:', data.error);
+                    this.showFallbackMessage();
+                }
+            } else {
+                console.error('Failed to update results count');
+                this.showFallbackMessage();
+            }
+        } catch (error) {
+            console.error('Error updating results count:', error);
+        } finally {
+            this.isUpdating = false;
+            this.hideLoadingState();
+        }
+    }
+    
+    // 現在の検索パラメータを取得
+    getCurrentSearchParams() {
+        const form = document.querySelector('form[method="get"]');
+        if (!form) return {};
+        
+        const formData = new FormData(form);
+        const params = {};
+        
+        for (let [key, value] of formData.entries()) {
+            if (params[key]) {
+                if (Array.isArray(params[key])) {
+                    params[key].push(value);
+                } else {
+                    params[key] = [params[key], value];
+                }
+            } else {
+                params[key] = value;
+            }
+        }
+        
+        return params;
+    }
+    
+    // 結果表示の更新
+    updateResultsDisplay(count) {
+        const countElements = document.querySelectorAll('.search-results-summary strong');
+        countElements.forEach(element => {
+            element.textContent = count.toLocaleString() + '件';
+        });
+        
+        // ページネーションの更新
+        this.updatePagination(count);
+    }
+    
+    // ページネーションの更新
+    updatePagination(totalCount) {
+        const pagination = document.querySelector('.pagination');
+        if (!pagination) return;
+        
+        const itemsPerPage = 10; // デフォルトの1ページあたりの件数
+        const totalPages = Math.ceil(totalCount / itemsPerPage);
+        
+        // ページネーション情報の更新
+        const pageInfo = document.querySelector('.page-info');
+        if (pageInfo) {
+            pageInfo.textContent = `ページ 1 / ${totalPages} (${totalCount.toLocaleString()} 件)`;
+        }
+    }
+    
+    // ローディング状態の表示
+    showLoadingState() {
+        const countElements = document.querySelectorAll('.search-results-summary strong');
+        countElements.forEach(element => {
+            element.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i>';
+        });
+    }
+    
+    // ローディング状態の非表示
+    hideLoadingState() {
+        // ローディング状態は updateResultsDisplay で上書きされる
+    }
+    
+    // フォールバックメッセージの表示
+    showFallbackMessage() {
+        const countElements = document.querySelectorAll('.search-results-summary strong');
+        countElements.forEach(element => {
+            element.textContent = '更新中...';
+        });
+        
+        // 3秒後に元の値に戻す
+        setTimeout(() => {
+            // ページを再読み込みして最新の件数を取得
+            window.location.reload();
+        }, 3000);
+    }
+}
+
+// ページ読み込み完了後に初期化
+document.addEventListener('DOMContentLoaded', function() {
+    new SearchResultsUpdater();
+});
+</script>
+
         </head>
         <body>
             <div class="container-fluid">
@@ -719,11 +1027,18 @@ class PocketNaviSafeApp {
                             <div class="card mb-3">
                                 <div class="card-body">
                                     <h6 class="card-title">フィルター適用済み</h6>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex gap-2 mb-2">
                                         <span class="badge bg-primary">
                                             <?php echo htmlspecialchars($architectInfo['name'] ?? $architectInfo['name_ja'] ?? $architectInfo['name_en'] ?? $architectsSlug); ?>
                                             <a href="?" class="text-white text-decoration-none ms-1">×</a>
                                         </span>
+                                    </div>
+                                    <!-- 検索結果件数表示 -->
+                                    <div class="search-results-summary">
+                                        <p class="mb-0 text-muted">
+                                            <i class="bi bi-search me-1"></i>
+                                            検索結果: <strong><?php echo number_format($totalBuildings); ?>件</strong>の建築物が見つかりました
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -731,12 +1046,52 @@ class PocketNaviSafeApp {
                             <div class="card mb-3">
                                 <div class="card-body">
                                     <h6 class="card-title">フィルター適用済み</h6>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex gap-2 mb-2">
                                         <span class="badge bg-primary">
                                             <i class="bi bi-geo-alt"></i>
                                             <?php echo htmlspecialchars($this->getPrefectureDisplayName($prefectures, $lang)); ?>
                                             <a href="?" class="text-white text-decoration-none ms-1">×</a>
                                         </span>
+                                    </div>
+                                    <!-- 検索結果件数表示 -->
+                                    <div class="search-results-summary">
+                                        <p class="mb-0 text-muted">
+                                            <i class="bi bi-search me-1"></i>
+                                            検索結果: <strong><?php echo number_format($totalBuildings); ?>件</strong>の建築物が見つかりました
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php elseif (!empty($query) || !empty($completionYears) || $hasPhotos || $hasVideos): ?>
+                            <!-- 検索条件があるが、建築家・都道府県フィルターがない場合 -->
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">検索結果</h6>
+                                    <div class="search-results-summary">
+                                        <p class="mb-0 text-muted">
+                                            <i class="bi bi-search me-1"></i>
+                                            検索結果: <strong><?php echo number_format($totalBuildings); ?>件</strong>の建築物が見つかりました
+                                        </p>
+                                        <?php if (!empty($query)): ?>
+                                            <p class="mb-0 small text-muted">
+                                                <i class="bi bi-tag me-1"></i>
+                                                検索キーワード: "<?php echo htmlspecialchars($query); ?>"
+                                            </p>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <!-- 検索結果がない場合の件数表示 -->
+                        <?php if (empty($buildings) && ($hasPhotos || $hasVideos || $completionYears || $prefectures || $query || $architectsSlug)): ?>
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="search-results-summary">
+                                        <p class="mb-0 text-muted">
+                                            <i class="bi bi-search me-1"></i>
+                                            検索結果: <strong>0件</strong>の建築物が見つかりました
+                                        </p>
                                     </div>
                                 </div>
                             </div>

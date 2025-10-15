@@ -148,7 +148,7 @@
                             <i data-lucide="filter" class="me-2" style="width: 16px; height: 16px;"></i>
                             <?php echo $lang === 'ja' ? 'フィルター適用済み' : 'Filters Applied'; ?>
                         </h6>
-                        <div class="d-flex gap-3 flex-wrap">
+                        <div class="d-flex gap-3 flex-wrap mb-2">
                             <?php if ($architectsSlug): ?>
                                 <span class="architect-badge filter-badge">
                                     <i data-lucide="circle-user-round" class="me-1" style="width: 12px; height: 12px;"></i>
@@ -317,6 +317,25 @@
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
+                        <!-- 検索結果件数表示 -->
+                        <div class="search-results-summary mt-2">
+                            <p class="mb-0 text-muted">
+                                <i data-lucide="search" class="me-1" style="width: 14px; height: 14px;"></i>
+                                検索結果: <strong><?php echo number_format($totalBuildings); ?>件</strong>の建築物が見つかりました
+                            </p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- 検索結果がない場合の件数表示 -->
+                <?php if (empty($buildings) && ($hasPhotos || $hasVideos || $completionYears || $prefectures || $query || $architectsSlug)): ?>
+                    <div class="alert alert-light mb-3">
+                        <div class="search-results-summary">
+                            <p class="mb-0 text-muted">
+                                <i data-lucide="search" class="me-1" style="width: 14px; height: 14px;"></i>
+                                検索結果: <strong>0件</strong>の建築物が見つかりました
+                            </p>
+                        </div>
                     </div>
                 <?php endif; ?>
                 
@@ -387,9 +406,193 @@
         // 建築物データをJavaScriptに渡す
         window.buildingsData = <?php echo json_encode($buildings); ?>;
         
+        // 検索結果件数の動的更新機能
+        class SearchResultsUpdater {
+            constructor() {
+                this.updateTimeout = null;
+                this.isUpdating = false;
+                this.init();
+            }
+            
+            init() {
+                // フィルター変更イベントの監視
+                this.observeFilterChanges();
+                // 検索フォームの監視
+                this.observeSearchForm();
+            }
+            
+            // フィルター変更の監視
+            observeFilterChanges() {
+                // 都道府県選択の監視
+                const prefectureSelects = document.querySelectorAll('select[name="prefectures[]"], select[name="prefectures"]');
+                prefectureSelects.forEach(select => {
+                    select.addEventListener('change', () => {
+                        this.scheduleUpdate();
+                    });
+                });
+                
+                // 完成年選択の監視
+                const yearSelects = document.querySelectorAll('select[name="completionYears[]"], select[name="completionYears"]');
+                yearSelects.forEach(select => {
+                    select.addEventListener('change', () => {
+                        this.scheduleUpdate();
+                    });
+                });
+                
+                // 写真・動画チェックボックスの監視
+                const photoCheckbox = document.querySelector('input[name="hasPhotos"]');
+                if (photoCheckbox) {
+                    photoCheckbox.addEventListener('change', () => {
+                        this.scheduleUpdate();
+                    });
+                }
+                
+                const videoCheckbox = document.querySelector('input[name="hasVideos"]');
+                if (videoCheckbox) {
+                    videoCheckbox.addEventListener('change', () => {
+                        this.scheduleUpdate();
+                    });
+                }
+            }
+            
+            // 検索フォームの監視
+            observeSearchForm() {
+                const searchInput = document.querySelector('input[name="q"]');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.scheduleUpdate();
+                    });
+                }
+            }
+            
+            // 更新のスケジュール（デバウンス）
+            scheduleUpdate() {
+                if (this.updateTimeout) {
+                    clearTimeout(this.updateTimeout);
+                }
+                
+                this.updateTimeout = setTimeout(() => {
+                    this.updateResultsCount();
+                }, 500); // 500ms後に実行
+            }
+            
+            // 検索結果件数の更新
+            async updateResultsCount() {
+                if (this.isUpdating) return;
+                
+                this.isUpdating = true;
+                this.showLoadingState();
+                
+                try {
+                    // 現在の検索パラメータを取得
+                    const searchParams = this.getCurrentSearchParams();
+                    
+                    // APIエンドポイントにリクエスト
+                    const response = await fetch('/api/search-count.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(searchParams)
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateResultsDisplay(data.count);
+                    } else {
+                        console.error('Failed to update results count');
+                    }
+                } catch (error) {
+                    console.error('Error updating results count:', error);
+                } finally {
+                    this.isUpdating = false;
+                    this.hideLoadingState();
+                }
+            }
+            
+            // 現在の検索パラメータを取得
+            getCurrentSearchParams() {
+                const form = document.querySelector('form[method="get"]');
+                if (!form) return {};
+                
+                const formData = new FormData(form);
+                const params = {};
+                
+                for (let [key, value] of formData.entries()) {
+                    if (params[key]) {
+                        if (Array.isArray(params[key])) {
+                            params[key].push(value);
+                        } else {
+                            params[key] = [params[key], value];
+                        }
+                    } else {
+                        params[key] = value;
+                    }
+                }
+                
+                return params;
+            }
+            
+            // 結果表示の更新
+            updateResultsDisplay(count) {
+                const countElements = document.querySelectorAll('.search-results-summary strong');
+                countElements.forEach(element => {
+                    element.textContent = count.toLocaleString() + '件';
+                });
+                
+                // ページネーションの更新
+                this.updatePagination(count);
+            }
+            
+            // ページネーションの更新
+            updatePagination(totalCount) {
+                const pagination = document.querySelector('.pagination');
+                if (!pagination) return;
+                
+                const itemsPerPage = 10; // デフォルトの1ページあたりの件数
+                const totalPages = Math.ceil(totalCount / itemsPerPage);
+                
+                // ページネーション情報の更新
+                const pageInfo = document.querySelector('.page-info');
+                if (pageInfo) {
+                    pageInfo.textContent = `ページ 1 / ${totalPages} (${totalCount.toLocaleString()} 件)`;
+                }
+            }
+            
+            // ローディング状態の表示
+            showLoadingState() {
+                const countElements = document.querySelectorAll('.search-results-summary strong');
+                countElements.forEach(element => {
+                    element.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i>';
+                });
+            }
+            
+            // ローディング状態の非表示
+            hideLoadingState() {
+                // ローディング状態は updateResultsDisplay で上書きされる
+            }
+            
+            // フォールバックメッセージの表示
+            showFallbackMessage() {
+                const countElements = document.querySelectorAll('.search-results-summary strong');
+                countElements.forEach(element => {
+                    element.textContent = '更新中...';
+                });
+                
+                // 3秒後に元の値に戻す
+                setTimeout(() => {
+                    // ページを再読み込みして最新の件数を取得
+                    window.location.reload();
+                }, 3000);
+            }
+        }
+        
         // Lucideアイコンの初期化とマップの初期化
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
+            
+            // 検索結果件数の動的更新機能を初期化
+            new SearchResultsUpdater();
             
             if (typeof L === 'undefined') {
                 console.error('Leaflet library not loaded');

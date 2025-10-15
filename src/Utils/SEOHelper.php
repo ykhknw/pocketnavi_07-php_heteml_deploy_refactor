@@ -17,6 +17,8 @@ class SEOHelper {
                 return self::generateBuildingMetaTags($data, $lang, $baseUrl);
             case 'architect':
                 return self::generateArchitectMetaTags($data, $lang, $baseUrl);
+            case 'search':
+                return self::generateSearchMetaTags($data, $lang, $baseUrl);
             case 'home':
                 return self::generateHomeMetaTags($lang, $baseUrl);
             case 'about':
@@ -122,6 +124,103 @@ class SEOHelper {
             'twitter_title' => $pageTitle,
             'twitter_description' => $description,
             'twitter_image' => $imageUrl,
+            'canonical' => $pageUrl
+        ];
+    }
+    
+    /**
+     * 検索結果ページのメタタグ
+     */
+    private static function generateSearchMetaTags($searchData, $lang, $baseUrl) {
+        $query = $searchData['query'] ?? '';
+        $totalResults = $searchData['total'] ?? 0;
+        $currentPage = $searchData['currentPage'] ?? 1;
+        $prefectures = $searchData['prefectures'] ?? '';
+        $completionYears = $searchData['completionYears'] ?? '';
+        $hasPhotos = $searchData['hasPhotos'] ?? false;
+        $hasVideos = $searchData['hasVideos'] ?? false;
+        
+        // 検索条件の組み立て
+        $searchConditions = [];
+        
+        if (!empty($query)) {
+            $searchConditions[] = "「{$query}」";
+        }
+        
+        if (!empty($prefectures)) {
+            $prefectureNames = is_array($prefectures) ? $prefectures : [$prefectures];
+            $searchConditions[] = implode('・', $prefectureNames);
+        }
+        
+        if (!empty($completionYears)) {
+            $yearNames = is_array($completionYears) ? $completionYears : [$completionYears];
+            $searchConditions[] = implode('・', $yearNames) . '年完成';
+        }
+        
+        if ($hasPhotos) {
+            $searchConditions[] = '写真あり';
+        }
+        
+        if ($hasVideos) {
+            $searchConditions[] = '動画あり';
+        }
+        
+        $searchConditionText = !empty($searchConditions) ? implode(' ', $searchConditions) . 'で検索' : '検索';
+        
+        // ページタイトルの最適化（SEO効果を考慮）
+        if ($lang === 'ja') {
+            if (!empty($query)) {
+                // 検索ワードがある場合は、検索ワードを前面に
+                $pageTitle = "{$query}の建築物検索結果";
+                if ($totalResults > 0) {
+                    $pageTitle .= " | {$totalResults}件の建築データベース";
+                }
+                $pageTitle .= " | PocketNavi";
+            } else {
+                // 検索ワードがない場合は、条件を前面に
+                $pageTitle = "{$searchConditionText}の建築物検索";
+                if ($totalResults > 0) {
+                    $pageTitle .= " | {$totalResults}件の建築データベース";
+                }
+                $pageTitle .= " | PocketNavi";
+            }
+        } else {
+            $pageTitle = "Search Results - {$totalResults} buildings found | Architecture Database PocketNavi";
+        }
+            
+        $description = $lang === 'ja'
+            ? "{$searchConditionText}の結果、{$totalResults}件の建築物が見つかりました。建築の詳細情報、写真、地図をPocketNaviで確認できます。"
+            : "Search results for {$searchConditionText}. Found {$totalResults} buildings. View detailed information, photos, and maps on PocketNavi.";
+            
+        $keywords = $lang === 'ja'
+            ? "建築物検索, {$query}, 建築, 設計, 検索結果, {$totalResults}件"
+            : "building search, {$query}, architecture, design, search results, {$totalResults} buildings";
+            
+        // 検索結果ページのURL
+        $searchParams = [];
+        if (!empty($query)) $searchParams['q'] = $query;
+        if (!empty($prefectures)) $searchParams['prefectures'] = is_array($prefectures) ? implode(',', $prefectures) : $prefectures;
+        if (!empty($completionYears)) $searchParams['completionYears'] = is_array($completionYears) ? implode(',', $completionYears) : $completionYears;
+        if ($hasPhotos) $searchParams['hasPhotos'] = '1';
+        if ($hasVideos) $searchParams['hasVideos'] = '1';
+        if ($currentPage > 1) $searchParams['page'] = $currentPage;
+        $searchParams['lang'] = $lang;
+        
+        $pageUrl = $baseUrl . '/index.php?' . http_build_query($searchParams);
+        
+        return [
+            'title' => $pageTitle,
+            'description' => $description,
+            'keywords' => $keywords,
+            'og_title' => $pageTitle,
+            'og_description' => $description,
+            'og_image' => $baseUrl . '/assets/images/og-image.jpg',
+            'og_url' => $pageUrl,
+            'og_type' => 'website',
+            'twitter_card' => 'summary_large_image',
+            'twitter_title' => $pageTitle,
+            'twitter_description' => $description,
+            'twitter_image' => $baseUrl . '/assets/images/og-image.jpg',
             'canonical' => $pageUrl
         ];
     }
@@ -331,6 +430,8 @@ class SEOHelper {
                 return self::generateBuildingStructuredData($data, $lang);
             case 'architect':
                 return self::generateArchitectStructuredData($data, $lang);
+            case 'search':
+                return self::generateSearchStructuredData($data, $lang);
             case 'home':
                 return self::generateHomeStructuredData($lang);
             case 'about':
@@ -432,6 +533,78 @@ class SEOHelper {
         if (!empty($building['youtubeUrl'])) {
             $structuredData['sameAs'][] = $building['youtubeUrl'];
         }
+        
+        return $structuredData;
+    }
+    
+    /**
+     * 検索結果ページの構造化データ
+     */
+    private static function generateSearchStructuredData($searchData, $lang) {
+        $baseUrl = self::getBaseUrl();
+        
+        $query = $searchData['query'] ?? '';
+        $totalResults = $searchData['total'] ?? 0;
+        $currentPage = $searchData['currentPage'] ?? 1;
+        $prefectures = $searchData['prefectures'] ?? '';
+        $completionYears = $searchData['completionYears'] ?? '';
+        $hasPhotos = $searchData['hasPhotos'] ?? false;
+        $hasVideos = $searchData['hasVideos'] ?? false;
+        
+        // 検索条件の組み立て
+        $searchConditions = [];
+        
+        if (!empty($query)) {
+            $searchConditions[] = $query;
+        }
+        
+        if (!empty($prefectures)) {
+            $prefectureNames = is_array($prefectures) ? $prefectures : [$prefectures];
+            $searchConditions[] = implode(', ', $prefectureNames);
+        }
+        
+        if (!empty($completionYears)) {
+            $yearNames = is_array($completionYears) ? $completionYears : [$completionYears];
+            $searchConditions[] = implode(', ', $yearNames) . ' completion year';
+        }
+        
+        if ($hasPhotos) {
+            $searchConditions[] = 'with photos';
+        }
+        
+        if ($hasVideos) {
+            $searchConditions[] = 'with videos';
+        }
+        
+        $searchConditionText = !empty($searchConditions) ? implode(', ', $searchConditions) : 'general search';
+        
+        $structuredData = [
+            '@context' => 'https://schema.org',
+            '@type' => 'SearchResultsPage',
+            'name' => $lang === 'ja' 
+                ? "建築物検索結果 - {$totalResults}件"
+                : "Building Search Results - {$totalResults} buildings",
+            'description' => $lang === 'ja'
+                ? "「{$searchConditionText}」の検索結果。{$totalResults}件の建築物が見つかりました。"
+                : "Search results for '{$searchConditionText}'. Found {$totalResults} buildings.",
+            'url' => $baseUrl . '/index.php',
+            'image' => $baseUrl . '/assets/images/og-image.jpg',
+            'mainEntity' => [
+                '@type' => 'ItemList',
+                'numberOfItems' => $totalResults,
+                'itemListElement' => []
+            ]
+        ];
+        
+        // 検索アクションの追加
+        $structuredData['potentialAction'] = [
+            '@type' => 'SearchAction',
+            'target' => [
+                '@type' => 'EntryPoint',
+                'urlTemplate' => $baseUrl . '/index.php?q={search_term_string}'
+            ],
+            'query-input' => 'required name=search_term_string'
+        ];
         
         return $structuredData;
     }
