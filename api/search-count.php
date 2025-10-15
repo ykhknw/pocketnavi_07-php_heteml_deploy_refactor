@@ -16,8 +16,17 @@ if (!$isProduction) {
     ini_set('display_errors', 1);
 }
 
+// セッション開始（CSRFトークン検証のため）
+if (session_status() === PHP_SESSION_NONE) {
+    // ヘッダーが送信されていない場合のみセッション開始
+    if (!headers_sent()) {
+        session_start();
+    }
+}
+
 // 必要なファイルを読み込み
 require_once __DIR__ . '/../src/Utils/CSRFHelper.php';
+require_once __DIR__ . '/../src/Security/RateLimiter.php';
 
 // JSONレスポンス用のヘッダーを設定
 header('Content-Type: application/json');
@@ -49,11 +58,44 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // CSRFトークンの検証
 if (!validateAjaxCSRFToken('search')) {
+    // デバッグ情報（開発環境のみ）
+    $debugInfo = [];
+    if (!$isProduction) {
+        $debugInfo = [
+            'session_id' => session_id(),
+            'session_status' => session_status(),
+            'post_token' => $_POST['csrf_token'] ?? 'not_set',
+            'header_token' => $_SERVER['HTTP_X_CSRF_TOKEN'] ?? 'not_set',
+            'session_tokens' => $_SESSION['csrf_tokens'] ?? 'not_set'
+        ];
+    }
+    
     http_response_code(403);
     echo json_encode([
         'success' => false,
         'error' => 'CSRF token validation failed',
-        'error_code' => 'CSRF_TOKEN_INVALID'
+        'error_code' => 'CSRF_TOKEN_INVALID',
+        'debug' => $debugInfo
+    ]);
+    exit;
+}
+
+// レート制限のチェック
+$rateLimiter = new RateLimiter();
+$clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+if (!$rateLimiter->checkLimit('search_count', $clientIP)) {
+    $blockTime = $rateLimiter->isBlocked('search_count', $clientIP);
+    $retryAfter = $blockTime ? $blockTime - time() : 300;
+    
+    http_response_code(429);
+    header('Retry-After: ' . $retryAfter);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Rate limit exceeded',
+        'error_code' => 'RATE_LIMIT_EXCEEDED',
+        'message' => 'リクエスト制限に達しました。しばらく時間をおいてから再試行してください。',
+        'retry_after' => $retryAfter
     ]);
     exit;
 }

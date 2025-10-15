@@ -32,7 +32,10 @@ class CSRFProtection
     {
         // セッションが開始されていない場合は開始
         if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            // ヘッダーが送信されていない場合のみセッション開始
+            if (!headers_sent()) {
+                session_start();
+            }
         }
         
         // CSRFトークン配列を初期化
