@@ -4,6 +4,7 @@
         <a class="navbar-brand d-flex align-items-center" href="/index.php?lang=<?php echo $lang; ?>">
             <i data-lucide="landmark" class="me-2" style="width: 32px; height: 32px;"></i>
             <span class="fw-bold">PocketNavi</span>
+            <span class="ms-3 text-muted">建築物検索データベース</span>
         </a>
         
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
