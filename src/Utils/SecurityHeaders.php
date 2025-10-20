@@ -1,14 +1,21 @@
 <?php
 
 /**
- * セキュリティヘッダー管理クラス
+ * セキュリティヘッダー管理クラス（後方互換性のため保持）
+ * 統合されたUnifiedSecurityHeadersクラスを使用することを推奨
+ * @deprecated 統合されたUnifiedSecurityHeadersクラスを使用してください
  */
 class SecurityHeaders {
     
     /**
      * セキュリティヘッダーを設定
+     * @deprecated 統合されたUnifiedSecurityHeadersクラスを使用してください
      */
     public static function setSecurityHeaders() {
+        // 統合されたクラスを使用することを推奨
+        if (class_exists('UnifiedSecurityHeaders')) {
+            trigger_error('SecurityHeaders::setSecurityHeaders()は非推奨です。UnifiedSecurityHeadersクラスを使用してください。', E_USER_DEPRECATED);
+        }
         // XSS対策
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');

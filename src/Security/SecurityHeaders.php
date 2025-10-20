@@ -1,13 +1,18 @@
 <?php
 /**
- * セキュリティヘッダー管理クラス
- * 各種セキュリティヘッダーの設定と管理
+ * セキュリティヘッダー管理クラス（後方互換性のため保持）
+ * 統合されたUnifiedSecurityHeadersクラスを使用することを推奨
+ * @deprecated 統合されたUnifiedSecurityHeadersクラスを使用してください
  */
 class SecurityHeaders {
     private $headers = [];
     private $cspDirectives = [];
     
     public function __construct() {
+        // 統合されたクラスを使用することを推奨
+        if (class_exists('UnifiedSecurityHeaders')) {
+            trigger_error('SecurityHeadersクラスは非推奨です。UnifiedSecurityHeadersクラスを使用してください。', E_USER_DEPRECATED);
+        }
         $this->initializeDefaultHeaders();
     }
     

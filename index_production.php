@@ -30,16 +30,23 @@ if ($productionConfig->isProduction()) {
 // セキュリティ設定の適用
 $securityConfig = $productionConfig->getSecurityConfig();
 if ($securityConfig['security_headers']) {
-    // セキュリティヘッダーの設定
-    header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: DENY');
-    header('X-XSS-Protection: 1; mode=block');
-    header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Permissions-Policy: geolocation=*, microphone=(), camera=(), payment=()');
-    
-    // HTTPS環境の場合のHSTS
-    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-        header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+    // 統合されたセキュリティヘッダーの設定
+    if (file_exists(__DIR__ . '/src/Security/UnifiedSecurityHeaders.php')) {
+        require_once __DIR__ . '/src/Security/UnifiedSecurityHeaders.php';
+        $securityHeaders = new UnifiedSecurityHeaders('production');
+        $securityHeaders->sendHeaders();
+    } else {
+        // フォールバック: 従来の設定
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: DENY');
+        header('X-XSS-Protection: 1; mode=block');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: geolocation=*, microphone=(), camera=(), payment=()');
+        
+        // HTTPS環境の場合のHSTS
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+        }
     }
     
     // Content Security Policy

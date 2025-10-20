@@ -8,8 +8,14 @@
 $isProduction = !isset($_GET['debug']); // デバッグモードでない場合は本番環境
 define('DEBUG_MODE', isset($_GET['debug'])); // デバッグパラメータがある場合はデバッグモード
 
-// セキュリティヘッダーの設定（本番環境で有効化）
-if (file_exists(__DIR__ . '/src/Security/SecurityHeaders.php')) {
+// 統合されたセキュリティヘッダーの設定
+if (file_exists(__DIR__ . '/src/Security/UnifiedSecurityHeaders.php')) {
+    require_once __DIR__ . '/src/Security/UnifiedSecurityHeaders.php';
+    $environment = $isProduction ? 'production' : 'development';
+    $securityHeaders = new UnifiedSecurityHeaders($environment);
+    $securityHeaders->sendHeaders();
+} elseif (file_exists(__DIR__ . '/src/Security/SecurityHeaders.php')) {
+    // フォールバック: 従来のSecurityHeadersクラス
     require_once __DIR__ . '/src/Security/SecurityHeaders.php';
     $securityHeaders = new SecurityHeaders();
     
