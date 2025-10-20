@@ -29,7 +29,7 @@ class SecurityHeaders {
         
         // Permissions-Policy（標準的な機能のみ）
         $this->setPermissionsPolicy([
-            'geolocation' => [],
+            'geolocation' => ['*'],
             'microphone' => [],
             'camera' => [],
             'payment' => [],
@@ -277,7 +277,7 @@ class SecurityHeaders {
         
         // 本番環境用のPermissions-Policy設定
         $this->setPermissionsPolicy([
-            'geolocation' => [],
+            'geolocation' => ['*'],
             'microphone' => [],
             'camera' => [],
             'payment' => [],
@@ -340,7 +340,7 @@ class SecurityHeaders {
         
         // 開発環境用のPermissions-Policy設定
         $this->setPermissionsPolicy([
-            'geolocation' => [],
+            'geolocation' => ['*'],
             'microphone' => [],
             'camera' => [],
             'payment' => [],

@@ -19,6 +19,8 @@ $structuredData = SEOHelper::generateStructuredData('about', [], $lang);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Permissions Policy for Geolocation -->
+    <meta http-equiv="Permissions-Policy" content="geolocation=*">
     
     <!-- SEO Meta Tags -->
     <?php echo SEOHelper::renderMetaTags($seoData); ?>
