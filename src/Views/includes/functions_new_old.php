@@ -356,6 +356,9 @@ function searchBuildingsNew($query, $page = 1, $hasPhotos = false, $hasVideos = 
     $whereClauses = [];
     $params = [];
     
+    // 住宅のみのデータを除外（共通フィルター）
+    $whereClauses[] = "(b.buildingTypes IS NULL OR b.buildingTypes = '' OR b.buildingTypes != '住宅')";
+    
     // 横断検索の処理
     if (!empty($keywords)) {
         // 各キーワードに対してOR条件を構築し、全体をANDで結合

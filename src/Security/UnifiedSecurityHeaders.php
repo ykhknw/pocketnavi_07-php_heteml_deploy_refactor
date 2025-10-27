@@ -46,11 +46,11 @@ class UnifiedSecurityHeaders {
                 ],
                 'csp' => [
                     'default-src' => ["'self'"],
-                    'script-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+                    'script-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
                     'style-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
                     'img-src' => ["'self'", "data:", "https:", "*.openstreetmap.org"],
                     'font-src' => ["'self'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-                    'connect-src' => ["'self'"],
+                    'connect-src' => ["'self'", "https://www.google-analytics.com", "https://analytics.google.com"],
                     'frame-ancestors' => ["'none'"],
                     'base-uri' => ["'self'"],
                     'form-action' => ["'self'"]
@@ -79,11 +79,11 @@ class UnifiedSecurityHeaders {
                 ],
                 'csp' => [
                     'default-src' => ["'self'"],
-                    'script-src' => ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:"],
+                    'script-src' => ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
                     'style-src' => ["'self'", "'unsafe-inline'", "https:"],
                     'img-src' => ["'self'", "data:", "https:", "blob:"],
                     'font-src' => ["'self'", "https:"],
-                    'connect-src' => ["'self'", "https:"],
+                    'connect-src' => ["'self'", "https:", "https://www.google-analytics.com", "https://analytics.google.com"],
                     'frame-ancestors' => ["'none'"]
                 ],
                 'x_frame_options' => 'SAMEORIGIN',

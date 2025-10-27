@@ -83,7 +83,9 @@
                message.includes('evmAsk.js') ||
                message.includes('content.js') ||
                message.includes('inject.js') ||
-               message.includes('main.js');
+               message.includes('main.js') ||
+               // Google Analytics関連のメッセージは除外（デバッグ用）
+               (message.includes('Google Analytics') && !message.includes('initialized'));
     }
     
     console.warn = function(...args) {
@@ -127,7 +129,29 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
-  gtag('config', 'G-9FY04VHM17');
+  gtag('config', 'G-9FY04VHM17', {
+    'debug_mode': true,
+    'send_page_view': true
+  });
+
+  // Google Analytics デバッグ用
+  console.log('Google Analytics initialized with ID: G-9FY04VHM17');
+  console.log('DataLayer:', window.dataLayer);
+  
+  // ページビューイベントの確認
+  gtag('event', 'page_view', {
+    'page_title': document.title,
+    'page_location': window.location.href
+  });
+  
+  // カスタムイベントのテスト
+  setTimeout(function() {
+    gtag('event', 'test_event', {
+      'event_category': 'debug',
+      'event_label': 'analytics_test'
+    });
+    console.log('Test event sent to Google Analytics');
+  }, 2000);
 </script>
 
 <!-- CSRFManager（本番環境用） -->

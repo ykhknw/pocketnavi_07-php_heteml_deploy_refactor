@@ -20,6 +20,9 @@ function initMap(center = [35.6762, 139.6503], buildings = []) {
     try {
         map = L.map('map').setView(center, 15);
         
+        // グローバル変数としてMapインスタンスを保存（付近検索機能用）
+        window.mapInstance = map;
+        
         // タイルレイヤーの追加
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
@@ -523,6 +526,26 @@ function searchNearby(lat, lng) {
     rootUrl.searchParams.set('radius', '5'); // デフォルト5km
     
     window.location.href = rootUrl.toString();
+}
+
+// Mapの中央地点から付近を検索（建築物一覧ページ用）
+function searchNearbyFromMapCenter() {
+    // LeafletのMapインスタンスを取得
+    if (typeof window.mapInstance === 'undefined' || !window.mapInstance) {
+        console.error('Map instance not found');
+        alert('地図が読み込まれていません。ページを再読み込みしてください。');
+        return;
+    }
+    
+    // Mapの中央地点を取得
+    const center = window.mapInstance.getCenter();
+    const lat = center.lat;
+    const lng = center.lng;
+    
+    console.log('Map center:', lat, lng);
+    
+    // 付近検索を実行
+    searchNearby(lat, lng);
 }
 
 // 経路を検索

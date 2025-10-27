@@ -71,6 +71,9 @@ function searchBuildings($query, $page = 1, $hasPhotos = false, $hasVideos = fal
     $whereClauses = [];
     $params = [];
     
+    // 住宅のみのデータを除外（共通フィルター）
+    $whereClauses[] = "(b.buildingTypes IS NULL OR b.buildingTypes = '' OR b.buildingTypes != '住宅')";
+    
     // 横断検索の処理
     if (!empty($keywords)) {
         // 各キーワードに対してOR条件を構築し、全体をANDで結合
@@ -230,6 +233,9 @@ function searchBuildingsByLocation($userLat, $userLng, $radiusKm = 5, $page = 1,
     // WHERE句の構築
     $whereClauses = [];
     $params = [];
+    
+    // 住宅のみのデータを除外（共通フィルター）
+    $whereClauses[] = "(b.buildingTypes IS NULL OR b.buildingTypes = '' OR b.buildingTypes != '住宅')";
     
     // 位置情報による検索（Haversine公式を使用）
     $whereClauses[] = "(6371 * ACOS(COS(RADIANS(?)) * COS(RADIANS(b.lat)) * COS(RADIANS(b.lng) - RADIANS(?)) + SIN(RADIANS(?)) * SIN(RADIANS(b.lat)))) < ?";

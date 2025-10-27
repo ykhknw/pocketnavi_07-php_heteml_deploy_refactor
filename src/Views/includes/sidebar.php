@@ -6,33 +6,44 @@
             <div id="map" style="height: 400px; width: 100%;"></div>
         </div>
         
-        <!-- Map Action Buttons (only shown when building_slug is specified) -->
-        <?php if ($currentBuilding && $currentBuilding['lat'] && $currentBuilding['lng']): ?>
+        <!-- Map Action Buttons (shown when building_slug is specified OR when on building list page) -->
+        <?php if (($currentBuilding && $currentBuilding['lat'] && $currentBuilding['lng']) || (!$currentBuilding)): ?>
             <div class="card-footer p-3">
                 <div class="d-grid gap-2">
-                    <!-- 付近を検索 -->
-                    <button type="button" 
-                            class="btn btn-outline-success btn-sm"
-                            onclick="searchNearby(<?php echo $currentBuilding['lat']; ?>, <?php echo $currentBuilding['lng']; ?>)">
-                        <i data-lucide="map-pinned" class="me-1" style="width: 16px; height: 16px;"></i>
-                        <?php echo $lang === 'ja' ? '付近を検索' : 'Search Nearby'; ?>
-                    </button>
-                    
-                    <!-- 経路を検索 -->
-                    <button type="button" 
-                            class="btn btn-outline-warning btn-sm"
-                            onclick="getDirections(<?php echo $currentBuilding['lat']; ?>, <?php echo $currentBuilding['lng']; ?>)">
-                        <i data-lucide="route" class="me-1" style="width: 16px; height: 16px;"></i>
-                        <?php echo $lang === 'ja' ? '経路を検索' : 'Get Directions'; ?>
-                    </button>
-                    
-                    <!-- グーグルマップで見る -->
-                    <button type="button" 
-                            class="btn btn-outline-info btn-sm"
-                            onclick="viewOnGoogleMaps(<?php echo $currentBuilding['lat']; ?>, <?php echo $currentBuilding['lng']; ?>)">
-                        <i data-lucide="external-link" class="me-1" style="width: 16px; height: 16px;"></i>
-                        <?php echo $lang === 'ja' ? 'グーグルマップで見る' : 'View on Google Maps'; ?>
-                    </button>
+                    <?php if ($currentBuilding && $currentBuilding['lat'] && $currentBuilding['lng']): ?>
+                        <!-- 建築物詳細ページの場合：3つのボタンを表示 -->
+                        <!-- 付近を検索 -->
+                        <button type="button" 
+                                class="btn btn-outline-success btn-sm"
+                                onclick="searchNearby(<?php echo $currentBuilding['lat']; ?>, <?php echo $currentBuilding['lng']; ?>)">
+                            <i data-lucide="map-pinned" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? '付近を検索' : 'Search Nearby'; ?>
+                        </button>
+                        
+                        <!-- 経路を検索 -->
+                        <button type="button" 
+                                class="btn btn-outline-warning btn-sm"
+                                onclick="getDirections(<?php echo $currentBuilding['lat']; ?>, <?php echo $currentBuilding['lng']; ?>)">
+                            <i data-lucide="route" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? '経路を検索' : 'Get Directions'; ?>
+                        </button>
+                        
+                        <!-- グーグルマップで見る -->
+                        <button type="button" 
+                                class="btn btn-outline-info btn-sm"
+                                onclick="viewOnGoogleMaps(<?php echo $currentBuilding['lat']; ?>, <?php echo $currentBuilding['lng']; ?>)">
+                            <i data-lucide="external-link" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? 'グーグルマップで見る' : 'View on Google Maps'; ?>
+                        </button>
+                    <?php else: ?>
+                        <!-- 建築物一覧ページの場合：Mapの中央地点で付近検索 -->
+                        <button type="button" 
+                                class="btn btn-outline-success btn-sm"
+                                onclick="searchNearbyFromMapCenter()">
+                            <i data-lucide="map-pinned" class="me-1" style="width: 16px; height: 16px;"></i>
+                            <?php echo $lang === 'ja' ? '付近を検索' : 'Search Nearby'; ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>

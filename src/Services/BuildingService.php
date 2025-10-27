@@ -39,6 +39,9 @@ class BuildingService {
         $whereClauses = [];
         $params = [];
         
+        // 共通フィルターの追加（住宅のみのデータを除外）
+        $this->addCommonFilters($whereClauses);
+        
         // キーワード検索条件の追加
         $this->addKeywordConditions($whereClauses, $params, $keywords);
         
@@ -77,6 +80,9 @@ class BuildingService {
         // WHERE句の構築
         $whereClauses = [];
         $params = [];
+        
+        // 共通フィルターの追加（住宅のみのデータを除外）
+        $this->addCommonFilters($whereClauses);
         
         // キーワード検索条件の追加
         $keywords = $this->parseKeywords($query);
@@ -640,6 +646,13 @@ class BuildingService {
         if (!empty($typeConditions)) {
             $whereClauses[] = '(' . implode(' OR ', $typeConditions) . ')';
         }
+    }
+    
+    /**
+     * 共通フィルターを追加（住宅のみのデータを除外）
+     */
+    private function addCommonFilters(&$whereClauses) {
+        $whereClauses[] = "(b.buildingTypes IS NULL OR b.buildingTypes = '' OR b.buildingTypes != '住宅')";
     }
     
     /**
