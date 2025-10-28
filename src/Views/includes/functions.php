@@ -693,4 +693,40 @@ function getPopularSearchesNew($lang = 'ja') {
 
 // 例: function searchBuildings() { return searchBuildingsNew(...); }
 // ただし、既存の関数が既に存在するため、この段階では新しい関数名を使用
+
+/**
+ * 指定されたslugの建築家のslug_group_idを取得
+ */
+function getSlugGroupId($architectSlug) {
+    try {
+        $db = getDB();
+        $sql = "SELECT slug_group_id FROM individual_architects_3 WHERE slug = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$architectSlug]);
+        $result = $stmt->fetch();
+        
+        return $result ? $result['slug_group_id'] : null;
+    } catch (Exception $e) {
+        error_log("Error getting slug_group_id: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * 指定されたgroup_idに属するすべてのslugを取得
+ */
+function getSlugsByGroupId($groupId) {
+    try {
+        $db = getDB();
+        $sql = "SELECT slug FROM slug_to_group WHERE group_id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$groupId]);
+        $results = $stmt->fetchAll();
+        
+        return array_column($results, 'slug');
+    } catch (Exception $e) {
+        error_log("Error getting slugs by group_id: " . $e->getMessage());
+        return [];
+    }
+}
 ?>

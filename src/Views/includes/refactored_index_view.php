@@ -572,8 +572,8 @@
             
             // マップの初期化
             if (typeof initMap === 'function') {
-                // 建築物がある場合は最初の建築物の位置を中心に、ない場合は東京を中心に
-                let center = [35.6762, 139.6503]; // デフォルト（東京）
+                // 建築物がある場合は最初の建築物の位置を中心に、ない場合は東京駅を中心に
+                let center = [35.6814, 139.7670]; // デフォルト（東京駅）
                 if (window.buildingsData && window.buildingsData.length > 0) {
                     const firstBuilding = window.buildingsData[0];
                     if (firstBuilding.lat && firstBuilding.lng) {

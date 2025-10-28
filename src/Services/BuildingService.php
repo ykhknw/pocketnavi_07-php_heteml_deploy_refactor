@@ -173,6 +173,9 @@ class BuildingService {
         $whereClauses = [];
         $params = [];
         
+        // 共通フィルターの追加（住宅のみのデータを除外）
+        $this->addCommonFilters($whereClauses);
+        
         // 位置情報条件の追加
         $this->addLocationConditions($whereClauses, $params, $userLat, $userLng, $radiusKm);
         
@@ -319,6 +322,14 @@ class BuildingService {
      * 建築家検索の専用実行メソッド
      */
     private function executeArchitectSearch($architectSlug, $page, $lang, $limit) {
+        // 建築家条件を構築（slug_groupを考慮）
+        $whereClauses = [];
+        $params = [];
+        $this->addArchitectConditions($whereClauses, $params, $architectSlug);
+        
+        // WHERE句の構築
+        $whereSql = implode(' AND ', $whereClauses);
+        
         // カウントクエリ（特定の建築家でフィルタリング）
         $countSql = "
             SELECT COUNT(DISTINCT b.building_id) as total
@@ -326,12 +337,16 @@ class BuildingService {
             LEFT JOIN {$this->building_architects_table} ba ON b.building_id = ba.building_id
             LEFT JOIN {$this->architect_compositions_table} ac ON ba.architect_id = ac.architect_id
             LEFT JOIN {$this->individual_architects_table} ia ON ac.individual_architect_id = ia.individual_architect_id
-            WHERE ia.slug = ?
+            WHERE {$whereSql}
         ";
         
         try {
+            // デバッグログ
+            error_log("Architect search count query: " . $countSql);
+            error_log("Architect search count params: " . json_encode($params));
+            
             // カウント実行
-            $total = $this->executeCountQuery($countSql, [$architectSlug]);
+            $total = $this->executeCountQuery($countSql, $params);
             
             $totalPages = ceil($total / $limit);
             
@@ -394,14 +409,18 @@ class BuildingService {
                 LEFT JOIN {$this->building_architects_table} ba2 ON b.building_id = ba2.building_id
                 LEFT JOIN {$this->architect_compositions_table} ac2 ON ba2.architect_id = ac2.architect_id
                 LEFT JOIN {$this->individual_architects_table} ia2 ON ac2.individual_architect_id = ia2.individual_architect_id
-                WHERE ia.slug = ?
+                WHERE {$whereSql}
                 GROUP BY b.building_id, b.uid, b.title, b.titleEn, b.slug, b.lat, b.lng, b.location, b.locationEn_from_datasheetChunkEn, b.completionYears, b.buildingTypes, b.buildingTypesEn, b.prefectures, b.prefecturesEn, b.has_photo, b.thumbnailUrl, b.youtubeUrl, b.created_at, b.updated_at
                 ORDER BY b.has_photo DESC, b.building_id DESC
                 LIMIT {$limit} OFFSET {$offset}
             ";
             
+            // デバッグログ
+            error_log("Architect search data query: " . $sql);
+            error_log("Architect search data params: " . json_encode($params));
+            
             // データ取得実行
-            $rows = $this->executeSearchQuery($sql, [$architectSlug]);
+            $rows = $this->executeSearchQuery($sql, $params);
             
             // データ変換
             $buildings = $this->transformBuildingData($rows, $lang);
@@ -688,11 +707,63 @@ class BuildingService {
     }
     
     /**
-     * 建築家条件を追加
+     * 建築家条件を追加（slug_groupを考慮）
      */
     private function addArchitectConditions(&$whereClauses, &$params, $architectSlug) {
-        $whereClauses[] = "ia.slug = ?";
-        $params[] = $architectSlug;
+        // 指定されたslugの建築家のslug_group_idを取得
+        $slugGroupId = $this->getSlugGroupId($architectSlug);
+        
+        if ($slugGroupId !== null) {
+            // slug_group_idが設定されている場合は、同じグループの建築家も含める
+            $groupSlugs = $this->getSlugsByGroupId($slugGroupId);
+            if (!empty($groupSlugs)) {
+                $placeholders = str_repeat('?,', count($groupSlugs) - 1) . '?';
+                $whereClauses[] = "ia.slug IN ($placeholders)";
+                $params = array_merge($params, $groupSlugs);
+            } else {
+                // グループ内のslugが見つからない場合は、元のslugのみ
+                $whereClauses[] = "ia.slug = ?";
+                $params[] = $architectSlug;
+            }
+        } else {
+            // slug_group_idがNULLの場合は、従来通り指定されたslugのみ
+            $whereClauses[] = "ia.slug = ?";
+            $params[] = $architectSlug;
+        }
+    }
+    
+    /**
+     * 指定されたslugの建築家のslug_group_idを取得
+     */
+    private function getSlugGroupId($architectSlug) {
+        try {
+            $sql = "SELECT slug_group_id FROM {$this->individual_architects_table} WHERE slug = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$architectSlug]);
+            $result = $stmt->fetch();
+            
+            return $result ? $result['slug_group_id'] : null;
+        } catch (Exception $e) {
+            error_log("Error getting slug_group_id: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 指定されたgroup_idに属するすべてのslugを取得
+     */
+    private function getSlugsByGroupId($groupId) {
+        try {
+            $sql = "SELECT slug FROM slug_to_group WHERE group_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$groupId]);
+            $results = $stmt->fetchAll();
+            
+            return array_column($results, 'slug');
+        } catch (Exception $e) {
+            error_log("Error getting slugs by group_id: " . $e->getMessage());
+            return [];
+        }
     }
     
     /**
@@ -877,18 +948,32 @@ class BuildingService {
                            sin(radians(?)) * sin(radians(b.lat))
                        )
                    ) AS distance,
-                   '' as architectJa,
-                   '' as architectEn,
-                   '' as architectIds,
-                   '' as architectSlugs
+                   GROUP_CONCAT(
+                       DISTINCT ia.name_ja 
+                       ORDER BY ba.architect_order, ac.order_index 
+                       SEPARATOR ' / '
+                   ) AS architectJa,
+                   GROUP_CONCAT(
+                       DISTINCT ia.name_en 
+                       ORDER BY ba.architect_order, ac.order_index 
+                       SEPARATOR ' / '
+                   ) AS architectEn,
+                   GROUP_CONCAT(
+                       DISTINCT ba.architect_id 
+                       ORDER BY ba.architect_order 
+                       SEPARATOR ','
+                   ) AS architectIds,
+                   GROUP_CONCAT(
+                       DISTINCT ia.slug 
+                       ORDER BY ba.architect_order, ac.order_index 
+                       SEPARATOR ','
+                   ) AS architectSlugs
             FROM {$this->buildings_table} b
-            WHERE b.lat IS NOT NULL AND b.lng IS NOT NULL AND (
-            6371 * acos(
-                cos(radians(?)) * cos(radians(b.lat)) * 
-                cos(radians(b.lng) - radians(?)) + 
-                sin(radians(?)) * sin(radians(b.lat))
-            )
-        ) <= ?
+            LEFT JOIN {$this->building_architects_table} ba ON b.building_id = ba.building_id
+            LEFT JOIN {$this->architect_compositions_table} ac ON ba.architect_id = ac.architect_id
+            LEFT JOIN {$this->individual_architects_table} ia ON ac.individual_architect_id = ia.individual_architect_id
+            $whereSql
+            GROUP BY b.building_id, b.uid, b.title, b.titleEn, b.slug, b.lat, b.lng, b.location, b.locationEn_from_datasheetChunkEn, b.completionYears, b.buildingTypes, b.buildingTypesEn, b.prefectures, b.prefecturesEn, b.has_photo, b.thumbnailUrl, b.youtubeUrl, b.created_at, b.updated_at
             ORDER BY distance ASC
             LIMIT {$limit} OFFSET {$offset}
         ";

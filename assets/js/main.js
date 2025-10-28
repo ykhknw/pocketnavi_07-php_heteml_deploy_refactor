@@ -4,7 +4,7 @@ let map;
 let markers = [];
 
 // 地図の初期化
-function initMap(center = [35.6762, 139.6503], buildings = []) {
+function initMap(center = [35.6814, 139.7670], buildings = []) {
     
     // マップ要素の存在確認
     const mapElement = document.getElementById('map');
@@ -623,8 +623,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const centerLng = buildings[0].lng;
                 initMap([centerLat, centerLng], buildings);
             } else {
-                // 建築物がない場合は東京を中心に設定
-                initMap([35.6762, 139.6503], []);
+                // 建築物がない場合は東京駅を中心に設定
+                initMap([35.6814, 139.7670], []);
             }
         }, 100);
     }
