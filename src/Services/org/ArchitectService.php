@@ -168,9 +168,9 @@ class ArchitectService {
     }
     
     /**
-     * 人気検索語を取得(OLD!!!!!!!!!!!!!!)
+     * 人気検索語を取得
      */
-    public function getPopularSearches_old($lang = 'ja') {
+    public function getPopularSearches($lang = 'ja') {
         try {
             require_once __DIR__ . '/SearchLogService.php';
             $searchLogService = new SearchLogService();
@@ -184,55 +184,6 @@ class ArchitectService {
             return [];
         }
     }
-
-/**
- * 人気検索語を取得（キャッシュ使用版）
- */
-public function getPopularSearches($lang = 'ja') {
-    try {
-        require_once __DIR__ . '/PopularSearchCache.php';
-        $cache = new PopularSearchCache();
-        
-        // キャッシュからデータを取得（searchType = '' で全件）
-        $result = $cache->getPopularSearches(1, 20, '', '');
-        
-        if (isset($result['searches']) && !empty($result['searches'])) {
-            // サイドバー用に整形
-            $searches = [];
-            foreach ($result['searches'] as $search) {
-                $searches[] = [
-                    'query' => $search['query'] ?? '',
-                    'count' => $search['total_searches'] ?? 0,
-                    'search_type' => $search['search_type'] ?? 'text',
-                    'link' => $search['link'] ?? ''
-                ];
-            }
-            return $searches;
-        }
-        
-        // キャッシュがない場合はフォールバック
-        return $this->getFallbackSearches();
-        
-    } catch (Exception $e) {
-        error_log("Get popular searches error: " . $e->getMessage());
-        return $this->getFallbackSearches();
-    }
-}
-
-/**
- * フォールバックデータ
- */
-private function getFallbackSearches() {
-    return [
-        ['query' => '安藤忠雄', 'count' => 45, 'search_type' => 'architect', 'link' => '/?q=安藤忠雄'],
-        ['query' => '隈研吾', 'count' => 42, 'search_type' => 'architect', 'link' => '/?q=隈研吾'],
-        ['query' => '美術館', 'count' => 38, 'search_type' => 'text', 'link' => '/?q=美術館'],
-        ['query' => '東京', 'count' => 35, 'search_type' => 'prefecture', 'link' => '/?prefectures=Tokyo'],
-        ['query' => '現代建築', 'count' => 28, 'search_type' => 'text', 'link' => '/?q=現代建築']
-    ];
-}
-
-
     
     /**
      * 建築家データを変換

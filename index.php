@@ -25,7 +25,6 @@ markTime('Start');
 // 変更後
 $isProduction = true; // 常に本番モード
 define('DEBUG_MODE', false); // デバッグ無効
-markTime('After isProduction');
 
 // 統合されたセキュリティヘッダーの設定
 if (file_exists(__DIR__ . '/src/Security/UnifiedSecurityHeaders.php')) {
@@ -47,7 +46,6 @@ if (file_exists(__DIR__ . '/src/Security/UnifiedSecurityHeaders.php')) {
     
     $securityHeaders->sendHeaders();
 }
-markTime('After security headers');
 
 // セキュアエラーハンドリングの設定（一時的に無効化）
 if (file_exists(__DIR__ . '/src/Security/SecureErrorHandler.php') && false) {
@@ -99,7 +97,6 @@ function loadEnvFile($filePath = '.env') {
 
 // .envファイルの読み込みを試行
 $envLoaded = loadEnvFile('.env') || loadEnvFile('../.env') || loadEnvFile('../../.env');
-markTime('After .env load');
 
 if ($envLoaded) {
     if (!$isProduction) {
@@ -179,7 +176,6 @@ try {
 } catch (Exception $e) {
     error_log("Pre-connection test failed: " . $e->getMessage());
 }
-markTime('After DB connection');
 
 // ============================================================================
 // 既存システムとの互換性を保つための設定
@@ -229,7 +225,6 @@ try {
 } catch (Exception $e) {
     error_log("Functions.php loading failed: " . $e->getMessage());
 }
-markTime('After functions.php');
 
 // functions.phpが読み込めない場合のフォールバック関数
 if (!$functionsLoaded) {
@@ -291,7 +286,6 @@ class PocketNaviSafeApp {
         $this->debugMode = isset($_GET['debug']) && ($_GET['debug'] === '1' || $_GET['debug'] === 'true');
         $this->cacheEnabled = isset($_GET['cache']) ? $_GET['cache'] === '1' : true; // デフォルトでキャッシュ有効
         
-        markTime('App: Start constructor');  // 追加
 
         // デバッグモードの確認（ログ出力）
         if ($this->debugMode) {
@@ -302,7 +296,6 @@ class PocketNaviSafeApp {
         try {
             require_once 'src/Services/CachedBuildingService.php';
             $this->cachedBuildingService = new CachedBuildingService($this->cacheEnabled, 3600);
-            markTime('App: After CachedBuildingService');  // 追加
 
             // デバッグ情報を追加
             if ($this->debugMode) {
@@ -317,13 +310,10 @@ class PocketNaviSafeApp {
         }
         
         $this->initializeSearchParameters();
-        markTime('App: After initializeSearchParameters');  // 追加
 
         $this->performSearch();
-        markTime('App: After performSearch');  // 追加
 
         $this->getPopularSearches();
-        markTime('App: After getPopularSearches');  // 追加
 
 
     }
@@ -393,25 +383,16 @@ class PocketNaviSafeApp {
         
         // パフォーマンス測定開始
         $startTime = microtime(true);
-        markTime('performSearch: Start');  // 追加
         
         try {
             if ($this->searchParams['buildingSlug']) {
-                markTime('performSearch: Before searchByBuildingSlug');  // 追加
                 $this->searchResult = $this->searchByBuildingSlug($limit);
-                markTime('performSearch: After  searchByBuildingSlug');  // 追加
             } elseif ($this->searchParams['architectsSlug']) {
-                markTime('performSearch: Before searchByArchitectSlug');  // 追加
                 $this->searchResult = $this->searchByArchitectSlug($limit);
-                markTime('performSearch: After  searchByArchitectSlug');  // 追加
             } elseif ($this->searchParams['userLat'] !== null && $this->searchParams['userLng'] !== null) {
-                markTime('performSearch: Before searchByLocation');  // 追加
                 $this->searchResult = $this->searchByLocation($limit);
-                markTime('performSearch: After  searchByLocation');  // 追加
             } else {
-                markTime('performSearch: Before searchWithMultipleConditions');  // 追加
                 $this->searchResult = $this->searchWithMultipleConditions($limit);
-                markTime('performSearch: After  searchWithMultipleConditions');  // 追加
             }
         } catch (Exception $e) {
             error_log("Search error: " . $e->getMessage());
@@ -423,7 +404,6 @@ class PocketNaviSafeApp {
             ];
         }
 
-        markTime('performSearch: End');  // 追加
         
         // パフォーマンス測定終了
         $endTime = microtime(true);
@@ -598,7 +578,6 @@ class PocketNaviSafeApp {
      * アプリケーションの実行
      */
     public function run() {
-        markTime('App: Start run()');  // 追加
 
         // 変数をビューで使用できるように設定
         $buildings = $this->searchResult['buildings'];
@@ -608,7 +587,6 @@ class PocketNaviSafeApp {
         $currentBuilding = $this->searchResult['currentBuilding'] ?? null;
         $architectInfo = $this->searchResult['architectInfo'] ?? null;
         
-        markTime('App: After basic variables');  // 追加
 
         // 元のindex.phpと同じ変数名を使用
         $query = $this->searchParams['query'];
@@ -627,29 +605,24 @@ class PocketNaviSafeApp {
         $popularSearches = $this->popularSearches;
         $lang = $this->lang;
         
-        markTime('App: After all basic variables');  // 追加
 
         // SEOメタタグの生成
         $pageType = 'home';
         $seoData = [];
         $structuredData = [];
         
-        markTime('App: Before SEOHelper');  // 追加
 
         // SEOHelperクラスの読み込み
-//        if (file_exists(__DIR__ . '/src/Utils/SEOHelper.php')) {
-        if (false && file_exists(__DIR__ . '/src/Utils/SEOHelper.php')) {  // ← false && を追加
+        if (file_exists(__DIR__ . '/src/Utils/SEOHelper.php')) {
+//        if (false && file_exists(__DIR__ . '/src/Utils/SEOHelper.php')) {  // ← false && を追加
             require_once __DIR__ . '/src/Utils/SEOHelper.php';
             
-            markTime('App: After SEOHelper require');  // 追加
 
             if ($buildingSlug && $currentBuilding) {
                 // 建築物ページ
                 $pageType = 'building';
                 $seoData = SEOHelper::generateMetaTags('building', $currentBuilding, $lang);
-                markTime('App: After generateMetaTags');  // 追加
                 $structuredData = SEOHelper::generateStructuredData('building', $currentBuilding, $lang);
-                markTime('App: After generateStructuredData');  // 追加
 
             } elseif ($architectsSlug && $architectInfo) {
                 // 建築家ページ
@@ -678,7 +651,6 @@ class PocketNaviSafeApp {
                 $structuredData = SEOHelper::generateStructuredData('home', [], $lang);
             }
 
-            markTime('App: After all SEO processing');  // 追加
 
         } else {
             // SEOHelperが存在しない場合のフォールバック
@@ -689,29 +661,22 @@ class PocketNaviSafeApp {
             ];
         }
         
-        markTime('App: After SEO section');  // 追加
 
         // キャッシュ統計情報
 //        $cacheStats = $this->getCacheStats();
         // 変更後（無効化）
         $cacheStats = null;  // getCacheStats()を呼ばない
         
-        markTime('App: After getCacheStats');  // 追加
-        markTime('App: After variable setup');  // 追加
 
         // ビューファイルの読み込み
         $viewFile = 'src/Views/includes/production_index_view.php';
         if (file_exists($viewFile) && !$this->debugMode) {
-            markTime('App: Before include view');  // 追加
             // デバッグモードでない場合のみ既存のビューファイルを使用
             include $viewFile;
-            markTime('App: After include view');  // 追加
 
         } else {
-            markTime('App: Before renderFallbackView');  // 追加
             // デバッグモードまたはビューファイルが存在しない場合はフォールバックビューを使用
             $this->renderFallbackView($buildings, $totalBuildings, $totalPages, $currentPage, $currentBuilding, $architectInfo, $query, $page, $hasPhotos, $hasVideos, $userLat, $userLng, $radiusKm, $buildingSlug, $prefectures, $architectsSlug, $completionYears, $limit, $popularSearches, $lang, $seoData, $structuredData, $cacheStats);
-            markTime('App: After renderFallbackView');  // 追加
         }
     }
     
@@ -1646,14 +1611,11 @@ document.head.appendChild(rippleStyle);
 // ============================================================================
 // アプリケーションの実行
 // ============================================================================
-markTime('Before app creation');
 
 try {
     $app = new PocketNaviSafeApp();
-    markTime('After app creation');  // 追加
 
     $app->run();
-    markTime('After app.run()');  // 追加
 
 } catch (Exception $e) {
     error_log("Application error: " . $e->getMessage());
@@ -1685,25 +1647,25 @@ try {
 
 
 // 7. 最後に統計を出力
-register_shutdown_function(function() {
-    global $_perf;
-    $total = round((microtime(true) - $_perf['start']) * 1000, 2);
-    
-    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    error_log("⏱️  TIMING BREAKDOWN");
-    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
-    $prev = 0;
-    foreach ($_perf['points'] as $point) {
-        $delta = $point['elapsed'] - $prev;
-        error_log(sprintf("[%6.2fms] (+%6.2fms) %s", $point['elapsed'], $delta, $point['label']));
-        $prev = $point['elapsed'];
-    }
-    
-    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    error_log("Total: {$total}ms");
-    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
-});
+//register_shutdown_function(function() {
+//    global $_perf;
+//    $total = round((microtime(true) - $_perf['start']) * 1000, 2);
+//    
+//    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+//    error_log("⏱️  TIMING BREAKDOWN");
+//    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+//    
+//    $prev = 0;
+//    foreach ($_perf['points'] as $point) {
+//        $delta = $point['elapsed'] - $prev;
+//        error_log(sprintf("[%6.2fms] (+%6.2fms) %s", $point['elapsed'], $delta, $point['label']));
+//        $prev = $point['elapsed'];
+//    }
+//    
+//    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+//    error_log("Total: {$total}ms");
+//    error_log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+//});
 
 
 

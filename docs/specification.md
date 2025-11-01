@@ -49,6 +49,117 @@
 
 注: 外部公開時は追加の認証/細粒度レート制御を推奨。
 
+## 人気の検索機能（サイドバー表示）
+
+### 表示方法
+
+- **配置場所**: サイドバー（`src/Views/includes/sidebar.php`）
+- **タイトル**: "人気の検索"（多言語対応: 日本語/英語）
+- **初期表示**: ページ読み込み時に `loadSidebarPopularSearches()` 関数（`assets/js/popular-searches.js`）が自動実行
+- **タブ機能**: 以下の5つのタブで分類表示
+  - すべて（all）
+  - 建築家（architect）
+  - 建築物（building）
+  - 都道府県（prefecture）
+  - テキスト（text）
+
+### フロントエンド実装
+
+- **JavaScript**: `assets/js/popular-searches.js`
+  - `loadSidebarPopularSearches()`: サイドバー用データの取得と表示
+  - `generateSidebarHTML()`: APIから取得したHTMLをサイドバー用に変換
+  - `filterSidebarSearches(searchType)`: タブ切り替え時のフィルタリング
+  - `removePaginationFromHtml()`: ページネーション要素の除去（サイドバーでは不要）
+
+- **API呼び出し**: `/api/popular-searches.php`
+  - パラメータ: `page=1`, `limit={deviceLimit}`, `lang={currentLang}`
+  - `deviceLimit`: デバイス別の表示件数制限（モバイル/デスクトップで自動調整）
+
+- **表示形式**:
+  - Bootstrapのリストグループ形式（`list-group-item`）
+  - 各項目に検索回数（バッジ表示）、ユーザー数（「すべて」タブのみ）
+  - クリックで該当検索結果ページへ遷移
+
+### キャッシュ仕様
+
+#### キャッシュファイル構造
+
+- **保存先**: `cache/popular_searches.php`
+- **フォーマット**: PHP配列として保存（`var_export`形式）
+- **構造**:
+  ```php
+  [
+    'timestamp' => 更新時刻（UNIXタイムスタンプ）,
+    'data' => [
+      '{cacheKey}' => [
+        'searches' => [...],
+        'total' => 件数,
+        'page' => ページ番号,
+        'limit' => 表示件数,
+        'totalPages' => 総ページ数
+      ]
+    ]
+  ]
+  ```
+
+#### キャッシュ管理クラス
+
+- **実装**: `src/Services/PopularSearchCache.php`
+- **キャッシュ有効期限**: 30分（`CACHE_DURATION = 1800秒`）
+- **キャッシュキー生成**: `md5(page_limit_searchQuery_searchType)` 形式
+- **自動更新**: 無効化（`AUTO_UPDATE_ENABLED = false`）
+  - 理由: CRONジョブによる定期更新を前提とするため
+  - アクセス時の自動更新は行わない
+
+#### キャッシュ更新プロセス
+
+1. **ロック機構**: `cache/popular_searches.php.lock` を使用した排他制御
+   - 非ブロッキングロック（`LOCK_EX | LOCK_NB`）
+   - ロック取得失敗時は既存キャッシュを返すか、フォールバックデータを使用
+
+2. **更新方法**:
+   - **定期更新**: CRONジョブ（`scripts/update_popular_searches.php`）で実行
+   - **手動更新**: 管理画面のキャッシュ管理機能から実行可能
+   - **更新スクリプト**: `scripts/update_popular_searches.php`
+     - 全検索タイプ（`''`, `'architect'`, `'building'`, `'prefecture'`, `'text'`）のキャッシュを生成
+     - 各タイプごとに最大50件のデータを取得してキャッシュ化
+
+3. **バックアップ**: 更新前に `cache/popular_searches_backup.php` に自動バックアップ
+
+4. **データ取得元**: 
+   - データベース: `global_search_history` テーブル
+   - サービス: `src/Services/SearchLogService::getPopularSearchesForModal()`
+
+#### フォールバック動作
+
+- キャッシュが存在しない、または有効期限切れの場合:
+  - **自動更新が無効**: フォールバックデータを返す
+  - **フォールバックデータ**: `PopularSearchCache::getFallbackData()` で定義されたサンプルデータ（安藤忠雄、隈研吾、東京、大阪などの固定データ）
+- API側でも同様のフォールバック処理を実装（`api/popular-searches.php`）
+
+#### キャッシュ状態確認
+
+- `PopularSearchCache::getCacheStatus()` メソッドで以下の情報を取得可能:
+  - `status`: `valid`（有効）/ `expired`（期限切れ）/ `not_exists`（不存在）
+  - `age`: キャッシュの経過時間（秒）
+  - `max_age`: 最大有効期限（1800秒）
+  - `data_count`: キャッシュ内のデータキー数
+  - `last_update`: 最終更新日時
+
+### モーダル表示機能
+
+- **トリガー**: サイドバーの「もっと見る」ボタン、または外部リンクアイコン
+- **モーダル**: `#popularSearchesModal`（Bootstrapモーダル）
+- **機能**: サイドバーと同様のタブ機能、ページネーション対応、検索フィルタリング
+- **初期化**: `loadPopularSearchesModal()` 関数でモーダル表示時にデータを読み込み
+
+### 運用上の注意
+
+- CRONジョブの設定が必要（`admin/cron_setup_guide.md` を参照）
+- キャッシュファイルの書き込み権限確保（`cache/` ディレクトリ）
+- ロックファイルの自動削除機構がないため、長時間ロックが残る場合は手動削除が必要
+- キャッシュが古い場合は管理画面から手動クリア可能
+
 ## データモデル（主なテーブル）
 
 - `buildings_table_3`: 建築物（座標/種別/画像/Youtube/likes、インデックス最適化）
@@ -128,4 +239,5 @@
 - セキュリティ: `src/Security/SecurityManager.php`, `src/Security/AuthenticationManager.php`, `src/Security/SecureAuthManager.php`
 - DB: `database/schema.sql`, `database/popular_searches_schema.sql`, `config/database.php__`
 - 管理: `admin/*`
+
 
