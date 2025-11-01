@@ -120,9 +120,61 @@
 2. **更新方法**:
    - **定期更新**: CRONジョブ（`scripts/update_popular_searches.php`）で実行
    - **手動更新**: 管理画面のキャッシュ管理機能から実行可能
-   - **更新スクリプト**: `scripts/update_popular_searches.php`
-     - 全検索タイプ（`''`, `'architect'`, `'building'`, `'prefecture'`, `'text'`）のキャッシュを生成
-     - 各タイプごとに最大50件のデータを取得してキャッシュ化
+
+#### CRON更新スクリプト（`scripts/update_popular_searches.php`）
+
+**概要**: 人気検索データのキャッシュを定期更新するためのCLIスクリプト。CRONジョブで定期的に実行されることを想定。
+
+**実行環境**:
+- PHP CLI実行可能な環境
+- シェバン: `#!/usr/local/php/8.3/bin/php`（Heteml環境の場合）
+- エラーレポート有効化（`E_ALL`, `display_errors = 1`）
+
+**処理フロー**:
+
+1. **初期化**:
+   - ログファイルの設定（`logs/cron_update_popular_searches.log`）
+   - タイムスタンプ付きログ出力関数の準備
+
+2. **依存ファイルの読み込み**:
+   - `config/database_unified.php`: データベース接続設定
+   - `src/Services/PopularSearchCache.php`: キャッシュ管理サービス
+
+3. **キャッシュ状態の確認**:
+   - `PopularSearchCache::getCacheStatus()` で現在のキャッシュ状態を確認
+   - ログ出力: キャッシュ状態、最終更新時刻、データ数
+
+4. **各検索タイプのキャッシュ更新**:
+   - 対象検索タイプ: `[''（すべて）, 'architect', 'building', 'prefecture', 'text']`
+   - 各タイプごとに以下の処理を実行:
+     - `PopularSearchCache::getPopularSearches()` を呼び出し
+       - パラメータ: `page=1`, `limit=50`, `searchQuery=''`, `searchType={検索タイプ}`
+     - 取得結果の件数をログ出力
+     - データがない場合はフォールバックデータが使用される旨をログ出力
+
+5. **更新後のキャッシュ状態確認**:
+   - 更新後のキャッシュ状態、最終更新時刻、データ数をログ出力
+
+6. **エラーハンドリング**:
+   - 例外発生時はエラーメッセージをログ出力
+   - PHPの `error_log` にも記録
+   - 終了コード `1` で終了
+
+**ログ出力内容**:
+- 実行開始/完了のメッセージ
+- 各検索タイプの更新状況
+- キャッシュ状態の変化（更新前/後）
+- エラー情報（発生時）
+
+**実行頻度の推奨**:
+- 30分に1回程度（キャッシュ有効期限と同期）
+- CRON設定例: `*/30 * * * * /usr/local/php/8.3/bin/php /path/to/scripts/update_popular_searches.php`
+
+**注意事項**:
+- ログファイル（`logs/cron_update_popular_searches.log`）が作成可能である必要がある
+- データベース接続が正常に動作する必要がある
+- `cache/` ディレクトリへの書き込み権限が必要
+- ロックファイルによる排他制御が行われるため、同時実行時は待機またはスキップされる
 
 3. **バックアップ**: 更新前に `cache/popular_searches_backup.php` に自動バックアップ
 
@@ -170,6 +222,87 @@
 - `users`: 将来拡張用ユーザー（メール/名前）
 - `global_search_history`: 検索履歴（人気検索用、`filters` JSON）
 - 認証関連（自動作成され得る）: `login_attempts`, `user_sessions`
+
+### global_search_historyテーブルへのデータ追加
+
+`global_search_history` テーブルへのデータ追加は、`src/Services/SearchLogService.php` の以下のメソッドで行われます。
+
+#### 1. 検索ログの記録（`logSearch()`メソッド）
+
+- **呼び出し元**: `src/Services/BuildingService.php`（検索実行時）
+- **処理内容**:
+  - 検索クエリと検索タイプ（text/architect/prefecture/building）を記録
+  - 重複防止チェック（同一セッション内の短時間重複を防止）
+  - セッションID、IPアドレスを記録
+  - 検索タイプに応じて追加情報（建築家ID、建築物ID、都道府県情報など）を取得
+  - 英語表示用データ（`title_en`など）を追加（日本語検索時のみ）
+  - フィルター情報（`hasPhotos`, `hasVideos`, `completionYears`, `prefectures`, `buildingTypes`, `lang`など）をJSON形式で保存
+
+- **SQL**: 
+  ```sql
+  INSERT INTO global_search_history 
+  (query, search_type, user_id, user_session_id, ip_address, filters) 
+  VALUES (?, ?, ?, ?, ?, ?)
+  ```
+
+- **重複防止**: 同一セッションで短時間内（デフォルト設定に依存）の同一検索は記録しない
+
+#### 2. ページ閲覧ログの記録（`logPageView()`メソッド）
+
+- **呼び出し元**:
+  - `src/Views/includes/functions.php`（建築家ページ閲覧時）
+  - `index_refactored_complete.php`（建築物・都道府県ページ閲覧時）
+
+- **処理内容**:
+  - 建築家、建築物、都道府県ページの閲覧を検索履歴として記録
+  - ページタイプ（`pageType`: architect/building/prefecture）を記録
+  - 重複防止チェック（同一セッションで5分以内の同一ページ閲覧を制限）
+  - ページタイプから検索タイプを自動判定
+  - クエリ文字列をページ情報から生成
+  - 英語表示用データを追加（日本語ユーザーの場合のみ）
+
+- **SQL**: 
+  ```sql
+  INSERT INTO global_search_history 
+  (query, search_type, user_id, user_session_id, ip_address, filters) 
+  VALUES (?, ?, ?, ?, ?, ?)
+  ```
+
+- **記録される情報**:
+  - `query`: ページタイトル（日本語/英語）
+  - `search_type`: architect/building/prefecture
+  - `user_id`: null（ページ閲覧はユーザーIDなし）
+  - `user_session_id`: セッションID
+  - `ip_address`: クライアントIPアドレス
+  - `filters`: JSON形式で以下の情報を含む
+    - `pageType`: architect/building/prefecture
+    - `identifier`: スラッグ
+    - `title`: ページタイトル
+    - `architect_id`/`building_id`: ID情報（該当する場合）
+    - `lang`: 言語（ja/en）
+    - `title_en`: 英語タイトル（日本語ユーザーの場合）
+
+#### データ追加のタイミング
+
+1. **検索実行時**（`BuildingService`経由）:
+   - トップページでの検索実行
+   - 検索結果表示と同時に記録
+
+2. **ページ閲覧時**:
+   - 建築家ページ（`/architects/{slug}`）閲覧時
+   - 建築物ページ（`/buildings/{slug}`）閲覧時
+   - 都道府県ページ閲覧時
+
+#### 重複防止の仕組み
+
+- **検索ログ**: `isDuplicateSearch()`メソッドで同一セッション内の短時間重複をチェック
+- **ページ閲覧ログ**: `isDuplicatePageView()`メソッドで同一セッションで5分以内の同一ページ閲覧を制限
+
+#### 注意事項
+
+- データ追加処理はエラーが発生しても例外を投げず、`error_log`に記録して処理を続行する
+- 大量のアクセスがある場合、INSERT処理がボトルネックになる可能性があるため、必要に応じてバッチ処理や非同期処理への移行を検討
+- `filters`カラムはJSON形式で保存されるため、MySQL 5.7以降のJSON型を使用することが推奨される
 
 ## データアクセス/接続
 

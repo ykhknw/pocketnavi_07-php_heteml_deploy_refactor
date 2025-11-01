@@ -121,6 +121,19 @@ class HomeController {
                 return;
             }
             
+            // 建築物ページ閲覧ログを記録
+            try {
+                require_once __DIR__ . '/../../src/Services/SearchLogService.php';
+                $searchLogService = new SearchLogService();
+                $lang = $_GET['lang'] ?? 'ja';
+                $searchLogService->logPageView('building', $slug, $building['title'] ?? $building['titleEn'] ?? $slug, [
+                    'building_id' => $building['building_id'] ?? null,
+                    'lang' => $lang
+                ]);
+            } catch (Exception $e) {
+                error_log("Building page view log error: " . $e->getMessage());
+            }
+            
             // 翻訳関数の読み込み
             require_once __DIR__ . '/../../src/Utils/Translation.php';
             
@@ -153,6 +166,19 @@ class HomeController {
             if (!$architect) {
                 $this->renderError("建築家が見つかりません。");
                 return;
+            }
+            
+            // 建築家ページ閲覧ログを記録
+            try {
+                require_once __DIR__ . '/../../src/Services/SearchLogService.php';
+                $searchLogService = new SearchLogService();
+                $lang = $_GET['lang'] ?? 'ja';
+                $searchLogService->logPageView('architect', $slug, $architect['name_ja'] ?? $architect['name_en'] ?? $slug, [
+                    'architect_id' => $architect['individual_architect_id'] ?? null,
+                    'lang' => $lang
+                ]);
+            } catch (Exception $e) {
+                error_log("Architect page view log error: " . $e->getMessage());
             }
             
             // 翻訳関数の読み込み

@@ -435,6 +435,18 @@ class PocketNaviSafeApp {
         }
         
         if ($currentBuilding) {
+            // 建築物ページ閲覧ログを記録
+            try {
+                require_once __DIR__ . '/src/Services/SearchLogService.php';
+                $searchLogService = new SearchLogService();
+                $searchLogService->logPageView('building', $this->searchParams['buildingSlug'], $currentBuilding['title'] ?? $currentBuilding['titleEn'] ?? $this->searchParams['buildingSlug'], [
+                    'building_id' => $currentBuilding['building_id'] ?? null,
+                    'lang' => $this->lang
+                ]);
+            } catch (Exception $e) {
+                error_log("Building page view log error: " . $e->getMessage());
+            }
+            
             return [
                 'buildings' => [$currentBuilding],
                 'total' => 1,
@@ -457,8 +469,10 @@ class PocketNaviSafeApp {
      * 建築家スラッグによる検索
      */
     private function searchByArchitectSlug($limit) {
+        $searchResult = null;
+        
         if ($this->cachedBuildingService) {
-            return $this->cachedBuildingService->searchByArchitectSlug(
+            $searchResult = $this->cachedBuildingService->searchByArchitectSlug(
                 $this->searchParams['architectsSlug'], 
                 $this->searchParams['page'], 
                 $this->lang, 
@@ -466,7 +480,7 @@ class PocketNaviSafeApp {
             );
         } else {
             // フォールバック: 既存の関数を使用
-            return searchBuildingsByArchitectSlug(
+            $searchResult = searchBuildingsByArchitectSlug(
                 $this->searchParams['architectsSlug'], 
                 $this->searchParams['page'], 
                 $this->lang, 
@@ -476,6 +490,23 @@ class PocketNaviSafeApp {
                 $this->searchParams['query']
             );
         }
+        
+        // CachedBuildingService経由の場合はログ記録処理が実行されないため、ここで記録
+        if ($this->cachedBuildingService && $searchResult && isset($searchResult['architectInfo']) && $searchResult['architectInfo']) {
+            try {
+                require_once __DIR__ . '/src/Services/SearchLogService.php';
+                $searchLogService = new SearchLogService();
+                $architectInfo = $searchResult['architectInfo'];
+                $searchLogService->logPageView('architect', $this->searchParams['architectsSlug'], $architectInfo['name_ja'] ?? $architectInfo['name_en'] ?? $this->searchParams['architectsSlug'], [
+                    'architect_id' => $architectInfo['individual_architect_id'] ?? null,
+                    'lang' => $this->lang
+                ]);
+            } catch (Exception $e) {
+                error_log("Architect page view log error: " . $e->getMessage());
+            }
+        }
+        
+        return $searchResult;
     }
     
     /**
@@ -512,6 +543,31 @@ class PocketNaviSafeApp {
      * 複数条件による検索
      */
     private function searchWithMultipleConditions($limit) {
+        // 都道府県ページ閲覧ログを記録（都道府県パラメータのみの場合）
+        if (!empty($this->searchParams['prefectures']) && empty($this->searchParams['query']) && empty($this->searchParams['completionYears'])) {
+            try {
+                require_once __DIR__ . '/src/Services/SearchLogService.php';
+                $searchLogService = new SearchLogService();
+                
+                // 都道府県名の英語→日本語変換
+                $prefectureTranslations = $this->getPrefectureTranslations();
+                $prefectureName = $this->searchParams['prefectures'];
+                if ($this->lang === 'ja' && isset($prefectureTranslations[$this->searchParams['prefectures']])) {
+                    $prefectureName = $prefectureTranslations[$this->searchParams['prefectures']];
+                }
+                
+                $searchLogService->logPageView('prefecture', $this->searchParams['prefectures'], $prefectureName, [
+                    'lang' => $this->lang,
+                    'hasPhotos' => $this->searchParams['hasPhotos'],
+                    'hasVideos' => $this->searchParams['hasVideos'],
+                    'prefecture_ja' => $prefectureTranslations[$this->searchParams['prefectures']] ?? $this->searchParams['prefectures'],
+                    'prefecture_en' => $this->searchParams['prefectures']
+                ]);
+            } catch (Exception $e) {
+                error_log("Prefecture page view log error: " . $e->getMessage());
+            }
+        }
+        
         if ($this->cachedBuildingService) {
             return $this->cachedBuildingService->searchWithMultipleConditions(
                 $this->searchParams['query'], 
@@ -681,20 +737,10 @@ class PocketNaviSafeApp {
     }
     
     /**
-     * 都道府県の表示名を取得
+     * 都道府県翻訳データの取得
      */
-    private function getPrefectureDisplayName($prefectures, $lang) {
-        // 都道府県の英語名から日本語名への変換マップ
-        $prefectureMap = [
-            'Aichi' => '愛知県',
-            'Tokyo' => '東京都',
-            'Osaka' => '大阪府',
-            'Kyoto' => '京都府',
-            'Kanagawa' => '神奈川県',
-            'Saitama' => '埼玉県',
-            'Chiba' => '千葉県',
-            'Hyogo' => '兵庫県',
-            'Fukuoka' => '福岡県',
+    private function getPrefectureTranslations() {
+        return [
             'Hokkaido' => '北海道',
             'Aomori' => '青森県',
             'Iwate' => '岩手県',
@@ -705,6 +751,10 @@ class PocketNaviSafeApp {
             'Ibaraki' => '茨城県',
             'Tochigi' => '栃木県',
             'Gunma' => '群馬県',
+            'Saitama' => '埼玉県',
+            'Chiba' => '千葉県',
+            'Tokyo' => '東京都',
+            'Kanagawa' => '神奈川県',
             'Niigata' => '新潟県',
             'Toyama' => '富山県',
             'Ishikawa' => '石川県',
@@ -713,8 +763,12 @@ class PocketNaviSafeApp {
             'Nagano' => '長野県',
             'Gifu' => '岐阜県',
             'Shizuoka' => '静岡県',
+            'Aichi' => '愛知県',
             'Mie' => '三重県',
             'Shiga' => '滋賀県',
+            'Kyoto' => '京都府',
+            'Osaka' => '大阪府',
+            'Hyogo' => '兵庫県',
             'Nara' => '奈良県',
             'Wakayama' => '和歌山県',
             'Tottori' => '鳥取県',
@@ -726,6 +780,7 @@ class PocketNaviSafeApp {
             'Kagawa' => '香川県',
             'Ehime' => '愛媛県',
             'Kochi' => '高知県',
+            'Fukuoka' => '福岡県',
             'Saga' => '佐賀県',
             'Nagasaki' => '長崎県',
             'Kumamoto' => '熊本県',
@@ -734,6 +789,14 @@ class PocketNaviSafeApp {
             'Kagoshima' => '鹿児島県',
             'Okinawa' => '沖縄県'
         ];
+    }
+    
+    /**
+     * 都道府県の表示名を取得
+     */
+    private function getPrefectureDisplayName($prefectures, $lang) {
+        // 都道府県の英語名から日本語名への変換マップ
+        $prefectureMap = $this->getPrefectureTranslations();
         
         // 言語に応じて表示名を返す
         if ($lang === 'ja') {

@@ -21,7 +21,8 @@ function writeLog($message) {
 }
 
 // 必要なファイルを読み込み
-require_once __DIR__ . '/../config/database.php';
+//require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/database_unified.php';
 require_once __DIR__ . '/../src/Services/PopularSearchCache.php';
 
 try {
